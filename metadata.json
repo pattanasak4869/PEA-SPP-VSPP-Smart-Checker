@@ -1,0 +1,12 @@
+{
+  "name": "PEA SPP&VSPP Smart Checker V1.0",
+  "description": "AI-powered Power Quality inspection system for PEA engineers to monitor and advise SPP/VSPP producers.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

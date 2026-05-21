@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // -------------------------------------------------------------------------
+    // HELPERS & PRIMITIVES
+    // -------------------------------------------------------------------------
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      let authEmail = request.auth.token.get('email', '');
+      return isSignedIn() && (
+        authEmail == 'pattanasak.kerdoum@gmail.com' || 
+        authEmail == 'pattanasak.ker@pea.co.th' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'ADMIN')
+      );
+    }
+
+    function isStaff() {
+      let authEmail = request.auth.token.get('email', '');
+      let isExplicitStaff = isSignedIn() && (
+        authEmail == 'pattanasak.kerdoum@gmail.com' || 
+        authEmail == 'pattanasak.ker@pea.co.th'
+      );
+      return isExplicitStaff || isAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['INSPECTOR', 'MANAGER', 'ADMIN']);
+    }
+
+    // -------------------------------------------------------------------------
+    // GLOBAL CATCH-ALL
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // SYSTEM CONFIG COLLECTION
+    // -------------------------------------------------------------------------
+    match /system_config/{configId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // POWER PLANTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /powerPlants/{plantId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // INSPECTION FORMS COLLECTION
+    // -------------------------------------------------------------------------
+    match /inspectionForms/{formId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // INSPECTION REQUESTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /inspectionRequests/{requestId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // COMPLAINTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /complaints/{complaintId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // INSPECTIONS COLLECTION
+    // -------------------------------------------------------------------------
+    match /inspections/{inspectionId} {
+      allow read, write: if true;
+    }
+
+    // -------------------------------------------------------------------------
+    // LOGIN LOGS COLLECTION
+    // -------------------------------------------------------------------------
+    match /loginLogs/{logId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "AppUser": {
+      "title": "AppUser",
+      "description": "ข้อมูลผู้ใช้งานระบบ PEA PQ Smart Tracker",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "รหัสพนักงาน" },
+        "username": { "type": "string", "description": "ชื่อบัญชีผู้ใช้" },
+        "name": { "type": "string", "description": "ชื่อ-นามสกุล" },
+        "role": { "type": "string", "enum": ["ADMIN", "INSPECTOR", "MANAGER", "VENDER"], "description": "สิทธิ์การใช้งาน" },
+        "position": { "type": "string", "description": "ตำแหน่ง" },
+        "email": { "type": "string", "format": "email", "description": "อีเมล" },
+        "phone": { "type": "string", "description": "เบอร์โทรศัพท์" },
+        "peaOffice": { "type": "string", "description": "สังกัด กฟจ." },
+        "department": { "type": "string", "description": "แผนก" },
+        "region": { "type": "string", "description": "เขตพื้นที่" },
+        "avatar": { "type": "string", "description": "รูปโปรไฟล์ (Base64)" },
+        "signature": { "type": "string", "description": "ลายเซ็นถาวร (Base64)" },
+        "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"], "description": "สถานะ" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employeeId", "username", "name", "role", "email"]
+    },
+    "PowerPlant": {
+      "title": "PowerPlant",
+      "description": "ข้อมูลโรงไฟฟ้า",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Solar", "Wind", "Biomass", "Biogas", "Waste", "Hydro"] },
+        "capacity": { "type": "number", "description": "กำลังการผลิต (MW)" },
+        "connectionPoint": { "type": "string" },
+        "userType": { "type": "string", "enum": ["SPP", "VSPP"] },
+        "region": { "type": "string" },
+        "province": { "type": "string" },
+        "gps": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "capacity"]
+    },
+    "InspectionForm": {
+      "title": "InspectionForm",
+      "description": "แบบฟอร์มการตรวจสอบ",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "DRAFT", "ARCHIVED"] },
+        "fields": { "type": "array" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "version", "status"]
+    },
+    "InspectionRequest": {
+      "title": "InspectionRequest",
+      "description": "คำร้องขอตรวจสอบ",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "vendorId": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "plantId": { "type": "string" },
+        "plantName": { "type": "string" },
+        "requestedDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED", "REJECTED", "AWAITING_APPROVAL", "COMPLETED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "vendorId", "plantId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "AppUser",
+      "description": "Collection สำหรับข้อมูลผู้ใช้งาน"
+    },
+    "/powerPlants/{plantId}": {
+      "schema": "PowerPlant",
+      "description": "Collection สำหรับข้อมูลโรงไฟฟ้า"
+    },
+    "/inspectionForms/{formId}": {
+      "schema": "InspectionForm",
+      "description": "Collection สำหรับแบบฟอร์ม"
+    },
+    "/inspectionRequests/{requestId}": {
+      "schema": "InspectionRequest",
+      "description": "Collection สำหรับคำร้องขอ"
+    }
+  }
+}

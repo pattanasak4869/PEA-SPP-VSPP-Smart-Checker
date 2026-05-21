@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="th" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>PEA PQ Smart Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'Prompt', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              pea: {
+                primary: '#6366f1',
+                secondary: '#4f46e5',
+                accent: '#0ea5e9',
+                bg: '#020617',
+              },
+            },
+            borderRadius: {
+              '2xl': '1.25rem',
+              '3xl': '2rem',
+              '4xl': '2.5rem',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-out',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+              'scale-in': 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              'pulse-soft': 'pulseSoft 3s infinite',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              scaleIn: { '0%': { transform: 'scale(0.95)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+              pulseSoft: { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.7' } },
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+      }
+      
+      /* Notification Animations */
+      @keyframes shrink { from { width: 100%; } to { width: 0%; } }
+      @keyframes slide-in-right { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      .animate-slide-in-right { animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      .animate-shrink { animation: shrink linear forwards; }
+
+      /* Base styles for Light Mode */
+      .minimal-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        border-radius: 1rem; /* rounded-2xl */
+      }
+
+      .minimal-card:hover {
+        border-color: rgba(99, 102, 241, 0.5);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+
+      .glass-input {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        transition: all 0.3s ease;
+        color: #0f172a;
+      }
+      
+      .glass-input:focus {
+        border-color: #6366f1;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+      }
+
+      /* Dark Mode Overrides */
+      html.dark .minimal-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: none;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+
+      html.dark .minimal-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      }
+
+      html.dark .minimal-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+      }
+
+      html.dark .glass-input {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: white;
+      }
+      
+      html.dark .glass-input:focus {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      .status-badge {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border-width: 1px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .status-completed { border-color: #10b98140; color: #10b981; background: #10b98110; }
+      .status-pending { border-color: #0ea5e940; color: #0ea5e9; background: #0ea5e910; }
+      .status-flagged { border-color: #f59e0b40; color: #f59e0b; background: #f59e0b10; }
+      .status-alert { border-color: #f43f5e40; color: #f43f5e; background: #f43f5e10; }
+
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 10px; }
+      html.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+      html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+      @media (max-width: 640px) {
+        .mobile-safe-area { padding-bottom: calc(env(safe-area-inset-bottom) + 90px); }
+      }
+    </style>
+    <link rel="stylesheet" href="/index.css">
+</head>
+  <body class="selection:bg-indigo-500/30 overflow-x-hidden bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors duration-300">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

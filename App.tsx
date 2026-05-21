@@ -18,7 +18,8 @@ import { InspectionApproval } from './components/InspectionApproval';
 import { AdminInspectionManagement } from './components/AdminInspectionManagement';
 import { PowerPlantRegistry } from './components/PowerPlantRegistry';
 import { VerifyReport } from './components/VerifyReport';
-import { Zap, LayoutDashboard, User, Menu, X, Bell, Users, ShieldAlert, Lock, FileText, Fingerprint, MessageSquare, ClipboardList, CheckCircle2, Globe, Inbox, Settings, Loader2 } from 'lucide-react';
+import { SeedManagement } from './components/SeedManagement';
+import { Zap, LayoutDashboard, User, Menu, X, Bell, Users, ShieldAlert, Lock, FileText, Fingerprint, MessageSquare, ClipboardList, CheckCircle2, Globe, Inbox, Settings, Loader2, Database } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { useNotifications } from './contexts/NotificationContext';
 import { useSettings } from './contexts/SettingsContext';
@@ -576,7 +577,8 @@ const App: React.FC = () => {
         { id: 'FORM_MANAGEMENT', icon: <FileText size={18} />, label: t('nav.admin_forms') },
         { id: 'LOGIN_MANAGEMENT', icon: <Fingerprint size={18} />, label: t('nav.admin_logs') },
         { id: 'COMPLAINT_MANAGEMENT', icon: <MessageSquare size={18} />, label: t('nav.admin_complaints') },
-        { id: 'USER_MANAGEMENT', icon: <Users size={18} />, label: t('nav.admin_users') }
+        { id: 'USER_MANAGEMENT', icon: <Users size={18} />, label: t('nav.admin_users') },
+        { id: 'SEED_DATA', icon: <Database size={18} />, label: t('nav.admin_seeds') }
     ] : []),
     { id: 'PROFILE', icon: <User size={18} />, label: t('nav.profile') },
   ];
@@ -651,6 +653,7 @@ const App: React.FC = () => {
                  view === 'FORM_MANAGEMENT' ? t('nav.admin_forms') : 
                  view === 'LOGIN_MANAGEMENT' ? t('nav.admin_logs') :
                  view === 'COMPLAINT_MANAGEMENT' ? t('nav.admin_complaints') :
+                 view === 'SEED_DATA' ? t('nav.admin_seeds') :
                  view === 'INSPECTION_REQUEST' ? t('nav.inspection_request') :
                  view === 'EQUIPMENT_INSPECTION' ? t('nav.inspection_tasks') :
                  view === 'INSPECTION_APPROVAL' ? t('nav.inspection_approval') :
@@ -784,6 +787,13 @@ const App: React.FC = () => {
                 )}
                 {view === 'COMPLAINT_MANAGEMENT' && userProfile?.role === 'ADMIN' && (
                   <ComplaintManagement 
+                    isDangerZoneUnlocked={isAdminSecurityUnlocked} 
+                    setIsDangerZoneUnlocked={setIsAdminSecurityUnlocked}
+                    setIsUnlockModalOpen={setIsUnlockModalOpen}
+                  />
+                )}
+                {view === 'SEED_DATA' && userProfile?.role === 'ADMIN' && (
+                  <SeedManagement 
                     isDangerZoneUnlocked={isAdminSecurityUnlocked} 
                     setIsDangerZoneUnlocked={setIsAdminSecurityUnlocked}
                     setIsUnlockModalOpen={setIsUnlockModalOpen}

@@ -40,6 +40,7 @@ export const translations = {
   'nav.admin_users': { TH: 'จัดการผู้ใช้งาน', EN: 'User Management', CN: '用戶管理' },
   'nav.admin_logs': { TH: 'ประวัติการใช้งาน', EN: 'Access Logs', CN: '操作日誌' },
   'nav.admin_complaints': { TH: 'จัดการข้อร้องเรียน', EN: 'Complaint Management', CN: '投訴管理' },
+  'nav.admin_seeds': { TH: 'ข้อมูลทดสอบ (Seed Data)', EN: 'Seed Sample Data', CN: '種子測試數據' },
   'nav.inspection_request': { TH: 'ส่งงานตรวจ', EN: 'Submit Inspection', CN: '提交巡檢' },
   'nav.inspection_tasks': { TH: 'ภารกิจตรวจสอบ', EN: 'Inspection Tasks', CN: '巡檢任務' },
   'nav.inspection_approval': { TH: 'งานรออนุมัติ', EN: 'Pending Approvals', CN: '待審核任務' },

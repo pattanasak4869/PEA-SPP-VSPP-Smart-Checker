@@ -14,7 +14,8 @@ export type ViewState =
   | 'INSPECTION_APPROVAL' 
   | 'POWER_PLANT_REGISTRY' 
   | 'INSPECTION_MANAGEMENT' 
-  | 'VERIFY_REPORT';
+  | 'VERIFY_REPORT'
+  | 'SEED_DATA';
 
 export type NotificationType = 'INFO' | 'ALERT' | 'SUCCESS';
 

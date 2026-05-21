@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>PEA SPP Smart Checker</title>
+    <title>PEA PQ Smart Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -120,6 +120,24 @@
       html.dark .glass-input:focus {
         border-color: rgba(99, 102, 241, 0.5);
         background: rgba(0, 0, 0, 0.5);
+      }
+
+      /* Fix dropdown and option visibility in light and dark modes */
+      select {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+      }
+      select option {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+      }
+      html.dark select {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+      }
+      html.dark select option {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
       }
 
       .status-badge {

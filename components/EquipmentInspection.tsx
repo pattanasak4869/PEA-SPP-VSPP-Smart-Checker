@@ -500,7 +500,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                              }
                           }
                         }}
-                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-white focus:border-[#74045F] outline-none transition-all"
+                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-400 focus:border-[#74045F] outline-none transition-all"
                       >
                          <option value="">เลือกโรงไฟฟ้า...</option>
                          {plants.map(p => <option key={p.id} value={p.id}>{p.id} - {p.name}</option>)}
@@ -511,7 +511,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                       <select 
                         value={selectedForm?.id || ''}
                         onChange={(e) => setSelectedForm(forms.find(f => f.id === e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-white focus:border-[#74045F] outline-none transition-all"
+                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-400 focus:border-[#74045F] outline-none transition-all"
                       >
                          <option value="">เลือกแบบฟอร์ม...</option>
                          {forms.map(f => {

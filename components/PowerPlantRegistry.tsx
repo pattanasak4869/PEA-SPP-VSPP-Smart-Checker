@@ -445,7 +445,7 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
                 <select 
                    value={regionFilter}
                    onChange={(e) => setRegionFilter(e.target.value)}
-                   className="pl-6 pr-8 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none outline-none focus:ring-2 focus:ring-[#74045F]/20"
+                   className="pl-6 pr-8 py-3 bg-slate-50 dark:bg-white/5 dark:text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none outline-none focus:ring-2 focus:ring-[#74045F]/20"
                 >
                    <option value="ALL">ทุกภูมิภาค</option>
                    <option value="ภาคเหนือ">ภาคเหนือ</option>

@@ -185,22 +185,22 @@ export const VerifyReport: React.FC = () => {
                 <table className="w-full technical-table text-left border-collapse">
                   <thead>
                     <tr>
-                      <th className="w-16 text-center py-4">ลำดับที่</th>
-                      <th className="text-center py-4">รายการการตรวจสอบ</th>
-                      <th className="w-1/3 text-center py-4">ค่าผลลัพธ์ของอุปกรณ์</th>
+                      <th className="w-16 text-center py-2">ลำดับที่</th>
+                      <th className="text-center py-2">รายการการตรวจสอบ</th>
+                      <th className="w-1/3 text-center py-2">ค่าผลลัพธ์ของอุปกรณ์</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(inspection.formData || {}).length > 0 ? (
                       Object.entries(inspection.formData || {}).map(([key, value]: [string, any], index) => (
                         <tr key={key} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                          <td className="text-center font-mono text-slate-400 tracking-tighter py-4">
+                          <td className="text-center font-mono text-slate-400 tracking-tighter py-2">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          <td className="text-center text-slate-700 py-4">
+                          <td className="text-center text-slate-700 py-2">
                             {getFieldLabel(key)}
                           </td>
-                          <td className="font-mono text-center text-xs text-slate-600 bg-slate-50/50 py-4">
+                          <td className="font-mono text-center text-xs text-slate-600 bg-slate-50/50 py-2">
                             {Array.isArray(value) ? value.join(', ') : (value || 'NULL')}
                           </td>
                         </tr>

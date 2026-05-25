@@ -177,7 +177,7 @@ export const VerifyReport: React.FC = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[16px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20}  className="text-[#74045F]" />
                 ข้อมูลจากการสังเกตภาคสนามและการวัดทางเทคนิค
               </h3>
@@ -185,22 +185,22 @@ export const VerifyReport: React.FC = () => {
                 <table className="w-full technical-table text-left border-collapse">
                   <thead>
                     <tr>
-                      <th className="w-16 text-center py-2">ลำดับที่</th>
-                      <th className="text-center py-2">รายการการตรวจสอบ</th>
-                      <th className="w-1/3 text-center py-2">ค่าผลลัพธ์ของอุปกรณ์</th>
+                      <th className="w-16 text-center py-2 text-[14px]">ลำดับที่</th>
+                      <th className="text-center py-2 text-[14px]">รายการการตรวจสอบ</th>
+                      <th className="w-1/3 text-center py-2 text-[14px]">ค่าผลลัพธ์ของอุปกรณ์</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(inspection.formData || {}).length > 0 ? (
                       Object.entries(inspection.formData || {}).map(([key, value]: [string, any], index) => (
                         <tr key={key} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                          <td className="text-[16px] text-center text-slate-400 tracking-tighter py-2">
+                          <td className="text-[12px] text-center text-slate-400 tracking-tighter py-2">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          <td className="text-[16px] text-center text-slate-700 py-2">
+                          <td className="text-[12px] text-center text-slate-700 py-2">
                             {getFieldLabel(key)}
                           </td>
-                          <td className="text-[16px] text-center text-slate-600 bg-slate-50/50 py-2">
+                          <td className="text-[12px] text-center text-slate-600 bg-slate-50/50 py-2">
                             {Array.isArray(value) ? value.join(', ') : (value || 'NULL')}
                           </td>
                         </tr>
@@ -210,7 +210,7 @@ export const VerifyReport: React.FC = () => {
                         <td colSpan={3} className="py-20 text-center">
                           <div className="flex flex-col items-center gap-2 opacity-30">
                             <Info size={32} />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No field data records found for this audit.</p>
+                            <p className="text-[12px] font-black uppercase tracking-widest text-slate-400">No field data records found for this audit.</p>
                           </div>
                         </td>
                       </tr>
@@ -225,7 +225,7 @@ export const VerifyReport: React.FC = () => {
                 <Zap size={20} className="text-amber-500" />
                 สรุปผลการประเมิน (Inspection Summary)
               </h3>
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-slate-600 leading-relaxed">
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-[14px] leading-relaxed">
                 "{inspection.approvalNote || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}"
               </div>
             </div>

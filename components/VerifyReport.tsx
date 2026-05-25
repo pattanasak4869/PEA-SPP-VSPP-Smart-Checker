@@ -123,6 +123,14 @@ export const VerifyReport: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-6">
+      <style>{`
+        @media print {
+          .print-page-break {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+        }
+      `}</style>
       <div className="max-w-4xl mx-auto">
         {/* Header Verification Badge */}
         <motion.div 
@@ -176,7 +184,7 @@ export const VerifyReport: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 print:break-before-page print-page-break">
               <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20}  className="text-[#74045F]" />
                 ข้อมูลจากการสังเกตภาคสนามและการวัดทางเทคนิค

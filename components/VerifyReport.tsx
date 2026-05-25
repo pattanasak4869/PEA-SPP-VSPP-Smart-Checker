@@ -178,29 +178,29 @@ export const VerifyReport: React.FC = () => {
 
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
               <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-                <FileText size={14} className="text-[#74045F]" />
+                <FileText size={20}  className="text-[#74045F]" />
                 ข้อมูลจากการสังเกตภาคสนามและการวัดทางเทคนิค
               </h3>
               <div className="overflow-hidden rounded-xl border border-slate-100 shadow-sm">
                 <table className="w-full technical-table text-left border-collapse">
                   <thead>
                     <tr>
-                      <th className="w-16 text-center">ลำดับที่</th>
-                      <th className="text-center">รายการการตรวจสอบ</th>
-                      <th className="w-1/3 text-center">ค่าผลลัพธ์ของอุปกรณ์</th>
+                      <th className="w-16 text-center py-4">ลำดับที่</th>
+                      <th className="text-center py-4">รายการการตรวจสอบ</th>
+                      <th className="w-1/3 text-center py-4">ค่าผลลัพธ์ของอุปกรณ์</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(inspection.formData || {}).length > 0 ? (
                       Object.entries(inspection.formData || {}).map(([key, value]: [string, any], index) => (
                         <tr key={key} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                          <td className="text-center font-mono text-slate-400 tracking-tighter">
+                          <td className="text-center font-mono text-slate-400 tracking-tighter py-4">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          <td className="text-center text-slate-700">
+                          <td className="text-center text-slate-700 py-4">
                             {getFieldLabel(key)}
                           </td>
-                          <td className="font-mono text-center text-xs text-slate-600 bg-slate-50/50">
+                          <td className="font-mono text-center text-xs text-slate-600 bg-slate-50/50 py-4">
                             {Array.isArray(value) ? value.join(', ') : (value || 'NULL')}
                           </td>
                         </tr>

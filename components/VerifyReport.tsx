@@ -136,12 +136,12 @@ export const VerifyReport: React.FC = () => {
           <div className="text-center md:text-left flex-1">
             <h1 className="text-[24px] font-black tracking-tight mb-1 uppercase italic">Verified Authentic</h1>
             <p className="text-emerald-50 text-[12px] opacity-90 leading-relaxed">
-              เอกสารฉบับนี้เป็นเอกสารรายงานผลการตรวจสอบอุปกรณ์โรงไฟฟ้าโดยบุคลากรจาก<br/>การไฟฟ้าส่วนภูมิภาค เพื่อรับรองว่าอุปกรณ์ดังกล่าวเป็นตามเงื่อนไขของการไฟฟ้าส่วนภูมิภาค
+              เอกสารฉบับนี้เป็นเพียงเอกสารรายงานผลการตรวจสอบอุปกรณ์โรงไฟฟ้าโดยบุคลากรจาก<br/>การไฟฟ้าส่วนภูมิภาค เพื่อรับรองว่าอุปกรณ์ดังกล่าวมีคุณลักษณะเป็นตามเงื่อนไขของหน่วยงาน
             </p>
           </div>
           <div className="bg-white/10 px-6 py-4 rounded-2xl border border-white/20 backdrop-blur-sm text-center">
             <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">รายงานผลการตรวจเลขที่</p>
-            <p className="text-lg font-mono font-black">PEA-SPP-{inspection.id?.substring(8, 16).toUpperCase()}</p>
+            <p className="text-[16px] font-black">PEA-SPP-{inspection.id?.substring(8, 16).toUpperCase()}</p>
           </div>
         </motion.div>
 
@@ -149,29 +149,29 @@ export const VerifyReport: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[16px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20} className="text-[#74045F]" />
                 ข้อมูลพื้นฐานโรงไฟฟ้า (Basic Information)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <p className="text-[16px] text-slate-400">ชื่อโรงไฟฟ้า</p>
-                  <p className="text-slate-700 font-bold text-[14px]">{inspection.plantName}</p>
+                  <p className="text-[14px] text-slate-400">ชื่อโรงไฟฟ้า</p>
+                  <p className="text-slate-700 font-bold text-[12px]">{inspection.plantName}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[16px] text-slate-400">สถานะปัจจุบัน</p>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700  text-[14px] font-black">
+                  <p className="text-[14px] text-slate-400">สถานะปัจจุบัน</p>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700  text-[12px] font-black">
                     <CheckCircle2 size={12} />
                     {inspection.status}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[16p text-slate-400">วันที่ได้รับอนุมัติ</p>
-                  <p className="text-slate-700 font-bold text-[14px]">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+                  <p className="text-[14px] text-slate-400">วันที่ได้รับอนุมัติ</p>
+                  <p className="text-slate-700 font-bold text-[12px]">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[16px] text-slate-400">หน่วยงานที่ตรวจสอบ</p>
-                  <p className="text-slate-700 font-bold text-[14px]">{inspection.office || 'PEA Regional PQ Team'}</p>
+                  <p className="text-[14px] text-slate-400">หน่วยงานที่ตรวจสอบ</p>
+                  <p className="text-slate-700 font-bold text-[12px]">{inspection.office || 'PEA Regional PQ Team'}</p>
                 </div>
               </div>
             </div>

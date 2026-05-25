@@ -155,23 +155,23 @@ export const VerifyReport: React.FC = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <p className="text-[14px] text-[#74045F]">ชื่อโรงไฟฟ้า</p>
-                  <p className="text-slate-700 font-bold text-[12px]">{inspection.plantName}</p>
+                  <p className="text-[14px] text-[#74045F] font-bold">ชื่อโรงไฟฟ้า</p>
+                  <p className="text-slate-700 text-[12px]">{inspection.plantName}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[14px] text-[#74045F]">สถานะปัจจุบัน</p>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700  text-[12px] font-black">
+                  <p className="text-[14px] text-[#74045F] font-bold">สถานะปัจจุบัน</p>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700  text-[12px]">
                     <CheckCircle2 size={12} />
                     {inspection.status}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[14px] text-[#74045F]">วันที่ได้รับอนุมัติ</p>
-                  <p className="text-slate-700 font-bold text-[12px]">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+                  <p className="text-[14px] text-[#74045F] font-bold">วันที่ได้รับอนุมัติ</p>
+                  <p className="text-slate-700 text-[12px]">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[14px] text-[#74045F]">หน่วยงานที่ตรวจสอบ</p>
-                  <p className="text-slate-700 font-bold text-[12px]">{inspection.office || 'PEA Regional PQ Team'}</p>
+                  <p className="text-[14px] text-[#74045F] font-bold">หน่วยงานที่ตรวจสอบ</p>
+                  <p className="text-slate-700 text-[12px]">{inspection.office || 'PEA Regional PQ Team'}</p>
                 </div>
               </div>
             </div>

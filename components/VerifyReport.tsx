@@ -2,18 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { InspectionResult } from '../types';
 import { safeParseLocalStorage } from '../utils/localStorageUtils';
-import { CheckCircle2, AlertCircle, FileText, Calendar, User, Zap, Mail, Phone, ShieldCheck, MapPin } from 'lucide-react';
+import { CheckCircle2, AlertCircle, FileText, Calendar, User, Zap, Mail, Phone, ShieldCheck, MapPin, Info } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const VerifyReport: React.FC = () => {
   const [inspectionId, setInspectionId] = useState<string | null>(null);
   const [inspection, setInspection] = useState<InspectionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forms, setForms] = useState<any[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('verify');
     setInspectionId(id);
+
+    // Load available forms for translation labels
+    const cachedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
+    setForms(cachedForms);
 
     if (id) {
       // Simulate fetching from DB (reading from localStorage)
@@ -29,6 +34,55 @@ export const VerifyReport: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const getFieldLabel = (key: string) => {
+    // 1. Look in the form corresponding to this inspection
+    const form = forms.find(f => f.id === inspection?.formId);
+    let field = form?.fields?.find((f: any) => f.id === key);
+    if (!field && form?.sections) {
+      for (const section of form.sections) {
+        field = section.fields?.find((f: any) => f.id === key);
+        if (field) break;
+      }
+    }
+    if (field?.label) return field.label;
+
+    // 2. Or fallback by scanning all other schemas
+    for (const f of forms) {
+      let lf = f.fields?.find((fl: any) => fl.id === key);
+      if (!lf && f.sections) {
+        for (const section of f.sections) {
+          lf = section.fields?.find((fl: any) => fl.id === key);
+          if (lf) break;
+        }
+      }
+      if (lf?.label) return lf.label;
+    }
+
+    // 3. Robust Thai and English dictionary database for physical equipment or standard PQ forms
+    const fallbackMap: Record<string, string> = {
+      f1: 'ชื่อโรงไฟฟ้า',
+      f2: 'วันที่ตรวจสอบหน้างาน',
+      f3: 'ระดับแรงดันเชื่อมเหลื่อมระบบ',
+      voltage: 'แรงดันไฟฟ้า (Voltage)',
+      current: 'กระแสไฟฟ้า (Current)',
+      harmonics: 'ระดับฮาร์มอนิกหลัก (THD - Total Harmonics distortion)',
+      flicker: 'ระดับไฟกระพริบระนาบแรงดัน (Voltage Flicker)',
+      grounding: 'ความต้านทานหลักดินของสถานี (Ground Resistance)',
+      visual_check: 'การประเมินสภาพสัณฐานภายนอกตู้จำจ่าย',
+      transformer_oil: 'คุณภาพนํ้ามันหม้อแปลงสลับเสตจ',
+      temp_c: 'ระดับอุณหภูมิขั้วต่อความร้อนสะสม (°C)',
+      power_factor: 'ค่าตัวประกอบสปีดกำลังหน้างาน (Power Factor)',
+      phase_unbalance: 'ความสมดุลความตึงทางเฟส (Phase Unbalance)',
+      active_power: 'กำลังไฟฟ้าจริงส่งสัญจร (Active Power - MW)',
+      reactive_power: 'กำลังไฟฟ้ารีแอคทีฟสะสม (Reactive Power - MVAR)',
+      frequency: 'ความถี่คลื่นระบบจำจ่ายเสถียร (Frequency - Hz)',
+      insulation_resistance: 'ความต้านทานฉนวนหม้อแปลง (Insulation Resistance)',
+      neutral_current: 'ระดับกระแสป้อนที่ไหลในสายนิวทรัล (Neutral Current)'
+    };
+
+    return fallbackMap[key] || key;
+  };
 
   if (loading) {
     return (

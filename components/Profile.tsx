@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, Shield, Award, Calendar, Mail, Phone, MapPin, ArrowLeft, Save, Check, Lock, Smartphone, Globe, Moon, RefreshCw, Volume2, MessageSquare, Sun, Building2, Briefcase, Trash2, PenTool, Image as ImageIcon, RotateCcw, Eye, EyeOff, ShieldAlert, Send } from 'lucide-react';
+import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, Shield, Award, Calendar, Mail, Phone, MapPin, ArrowLeft, Save, Check, Lock, Smartphone, Globe, Moon, RefreshCw, Volume2, MessageSquare, Sun, Building2, Briefcase, Trash2, PenTool, Image as ImageIcon, RotateCcw, Eye, EyeOff, ShieldAlert, Send, BookOpen } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -797,9 +797,10 @@ interface MainProfileViewProps {
   handleDeleteAvatar: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onLogout: () => void;
+  language: any;
 }
 
-const MainProfileView: React.FC<MainProfileViewProps> = ({ profileData, t, setSection, handleAvatarUpload, handleDeleteAvatar, fileInputRef, onLogout }) => (
+const MainProfileView: React.FC<MainProfileViewProps> = ({ profileData, t, setSection, handleAvatarUpload, handleDeleteAvatar, fileInputRef, onLogout, language }) => (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
     {/* Left Column: ID Card & Quick Stats */}
     <div className="space-y-6">
@@ -927,11 +928,16 @@ const MainProfileView: React.FC<MainProfileViewProps> = ({ profileData, t, setSe
 
                 <button onClick={() => setSection('NOTIFICATIONS')} className="w-full p-4 flex items-center justify-between hover:bg-white/50 dark:hover:bg-white/5 transition-colors group">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-                            <Bell size={20} />
+                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                            <BookOpen size={20} />
                         </div>
                         <div className="text-left">
-                            <div className="text-sm font-medium text-slate-900 dark:text-white">{t('profile.notifications')}</div>
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                {language === 'TH' ? 'คู่มือสถาปัตยกรรมและเอกสารอ้างอิงข้อมูลทางเทคนิค' : 'Project Architecture & Technical Guide'}
+                            </div>
+                            <div className="text-xs text-gray-500 justify-start">
+                                {language === 'TH' ? 'คู่มือพัฒนา บันทึกสัญจรสคีมา และสูตรคำนวณพิกัด Geofence' : 'Developer manual, Firestore schemas, and Geofence math'}
+                            </div>
                         </div>
                     </div>
                     <ChevronRight size={18} className="text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white" />
@@ -1427,19 +1433,583 @@ const SupportView = ({ profileData, setSection, showToast }: { profileData: any;
   );
 };
 
-const NotificationsView = ({ t, setSection }: { t: any; setSection: any }) => (
-  <div className="space-y-6 animate-slide-in-top">
-      <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-white"><Bell className="text-[#C7911B]" /> {t('profile.notifications')}</h3>
-          <div className="text-gray-600 dark:text-gray-300">
-              Notification settings here.
+const NotificationsView = ({ t, setSection, language }: { t: any; setSection: any; language: Language }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedChapter, setSelectedChapter] = useState(0);
+  const [lat1, setLat1] = useState('13.7563');
+  const [lng1, setLng1] = useState('100.5018');
+  const [lat2, setLat2] = useState('13.7590');
+  const [lng2, setLng2] = useState('100.5019');
+
+  const getDistanceResult = () => {
+    const l1 = parseFloat(lat1);
+    const n1 = parseFloat(lng1);
+    const l2 = parseFloat(lat2);
+    const n2 = parseFloat(lng2);
+    if (isNaN(l1) || isNaN(n1) || isNaN(l2) || isNaN(n2)) return null;
+
+    const R = 6371000; // Earth radius in meters
+    const dLat = ((l2 - l1) * Math.PI) / 180;
+    const dLon = ((n2 - n1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((l1 * Math.PI) / 180) *
+        Math.cos((l2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const distanceResult = getDistanceResult();
+
+  const chapters = [
+    {
+      title: language === 'TH' ? "บทที่ 1: ข้อมูลปฐมภูมิและสมรรถนะภาพรวมของระบบ" : "Chapter 1: General Information & System Capabilities",
+      subtitle: "System Architecture & Core Capabilities",
+      icon: <Building2 size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+            {language === 'TH' ? (
+              <>
+                ระบบ <strong>PEA PQ SMART TRACKER</strong> พัฒนาขึ้นมาเพื่อตอบสนองการตรวจสอบและติดตามระดับเกณฑ์มาตรฐานความเข้ากันได้ทางแม่เหล็กไฟฟ้าและการจ่ายกำลังไฟฟ้าขยับถอย (Power Quality Compliance) ของสถานีย์ขนานไฟผู้ผลิตฟ้ารายเล็กและรายเล็กมาก (SPP/VSPP) เพื่อรองรับยุทธศาสตร์องค์กรอัจฉริยะ (Digital Utility Digital Transformation) ของการไฟฟ้าส่วนภูมิภาค (PEA) อย่างมั่นคงสูงสุด
+              </>
+            ) : (
+              <>
+                The <strong>PEA PQ SMART TRACKER</strong> platform integrates high-performance analytics to monitor and evaluate Power Quality Compliance of Very Small Power Producers (VSPP) and Small Power Producers (SPP) grid-interconnected with the Provincial Electricity Authority (PEA) main network.
+              </>
+            )}
+          </p>
+          
+          <div className="p-5 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 rounded-2xl border border-slate-200 dark:border-white/10 space-y-3">
+            <h4 className="font-black text-xs uppercase tracking-widest text-[#74045F] dark:text-[#C7911B] flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#74045F] dark:bg-[#C7911B]" />
+              {language === 'TH' ? 'โครงสร้างสถาปัตยกรรมแบบ 3 ชั้นระดับวิศวกรรม (Rigorous 3-Tier Layer Architecture)' : 'Engineering 3-Tier Client-Server Architecture'}
+            </h4>
+            <div className="grid md:grid-cols-3 gap-4 text-xs">
+              <div className="space-y-1">
+                <span className="font-extrabold text-[#74045F] dark:text-[#C7911B] block uppercase text-[10px]">1. Presentation UI Layer</span>
+                <p className="text-slate-500 dark:text-gray-400 leading-relaxed text-[11px]">
+                  {language === 'TH' ? 'เรนเดอร์ UI ชั้นหน้าสัมผัสผ่าน React 18 และคอมไพล์ความเร็วระดับสูงด้วย Vite พร้อมด้วยการปรับตามขนาดสกรีนและโหมดสีระดับเข้มข้นด้วย Tailwind CSS v4' : 'Vite-powered React UI with seamless responsive layouts using Tailwind CSS v4 to prevent transformer screen glares.'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-extrabold text-[#74045F] dark:text-[#C7911B] block uppercase text-[10px]">2. Logical API Layer</span>
+                <p className="text-slate-500 dark:text-gray-400 leading-relaxed text-[11px]">
+                  {language === 'TH' ? 'ประยุกต์จัดทำ Express Server ยิงสระข้อมูลเข้าพอร์ตคุมแอป 3000 ผ่าน Node TypeScript ถอดโค้ดชนิดจำแลง ป้องกันการรั่วไหลของรหัสการสื่อสารและ API Keys ลับ' : 'Express.js backend bound securely to port 3000 proxies external services and preserves enterprise key secrets from the browser.'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-extrabold text-[#74045F] dark:text-[#C7911B] block uppercase text-[10px]">3. State Storage Layer</span>
+                <p className="text-slate-500 dark:text-gray-400 leading-relaxed text-[11px]">
+                  {language === 'TH' ? 'พึ่งระบบคลาวด์จัดเก็บ Cloud Firestore พร้อมยืนยันสิทธ์ตัวตนดวล Firebase Auth กั้นพาร์ทข้อมูลด้วย Firestore Security Rules เพื่อล็อคป้องกันประวัติสลับหน้างาน' : 'Firestore database for schema structures and Firebase Auth context verified under rigid Security Rules.'}
+                </p>
+              </div>
+            </div>
           </div>
-           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-white/10 flex justify-end">
-              <button onClick={() => setSection('MAIN')} className="text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white">{t('btn.back')}</button>
-           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 space-y-1">
+              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                LIGHT MODE OPTIMIZATIONS
+              </span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'ตัดปัญหาจอสะท้อนแสงอาทิตย์ (High Contrast WebAIM Compliant) ขณะเดินหน้าลานหม้อแปลงจำจ่ายนอกอาคารแรงดันสูง' : 'Engineered with safe WebAIM high-contrast metrics ensuring outdoor readability under direct high transformer solar glare.'}
+              </p>
+            </div>
+            <div className="p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/20 space-y-1">
+              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                DARK MODE REFINEMENTS
+              </span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'โครงสี slate คาร์บอนลึก ช่วยประหยัดสายตาและรักษาความล้าสำหรับการวิเคราะห์ผลของบอร์ดบริหารในห้องแสงมืด' : 'Atmospheric dark slate frames designed to minimize optical fatigue during prolonged night shift audits.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 2: ลำดับขั้นตอนการทำงานและกระบวนการเวิร์กโฟลว์" : "Chapter 2: System Workflow Procedures",
+      subtitle: "Detailed Workflow & State Transitions",
+      icon: <Briefcase size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+            {language === 'TH' ? 'กระบวนการเคลื่อนย้ายสิทธิ์เปลี่ยนสถานะ (State Transition Invariants) ดำเนินไปอย่างเป็นลำดับและควบคุมสิทธิ์เข้มข้นตามระดับบทบาทบัญชีผู้ใช้:' : 'The inspection workflow transitions systematically, locking modifications based on authentication contexts and state validators:'}
+          </p>
+          <div className="p-4 bg-slate-950 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/10 font-mono text-[11px] overflow-x-auto whitespace-pre leading-relaxed text-slate-300 dark:text-slate-400 shadow-inner">
+{` +------------+    ลงทะเบียนสถานีโรงไฟฟ้า      +-------------+
+ |   VENDOR   | -------------------------> |  PENDING    | (ยื่นนัดคำขอวิเคราะห์)
+ +------------+                            +-------------+
+                                                  |
+                                                  | เจ้าหน้าที่ กฟภ. กดรับภารกิจ
+                                                  v
+                                           +-------------+
+                                           |  ACCEPTED   | (ผูกประจำ assignedInspector)
+                                           +-------------+
+                                                  |
+                                                  | วิศวกรลงหน้างาน + ผ่าน Geofencing
+                                                  | (ปลดล็อคแบบฟอร์มตรวจสอบและลายมือเขียน)
+                                                  v
+                                           +-------------+
+                                           |  AWAITING_  | (ส่งบันทึกตู้ไฟฟ้าเข้า Firestore)
+                                           |  APPROVAL   |
+                                           +-------------+
+                                            /           \\
+                    หัวหน้างานตรวจสอบผ่านสิทธิ์ /             \\ ตรวจพบบกพร่องรุนแรง
+                                          v               v
+                                   +-------------+ +-------------+
+                                   |  COMPLETED  | |  REJECTED   | (แจ้งกลับ Vendor ด่วน)
+                                   | (เสร็จสมบูรณ์) | |  (ปรับปรุงคลัง) |
+                                   +-------------+ +-------------+`}
+          </div>
+          
+          <div className="p-4 bg-indigo-50/50 dark:bg-white/5 rounded-xl border border-indigo-100 dark:border-white/5 text-xs text-slate-600 dark:text-slate-400 space-y-2">
+            <span className="font-black text-indigo-700 dark:text-indigo-400 block uppercase tracking-wide">
+              {language === 'TH' ? 'กฎเหล็กความถูกต้องของประวัติ (Inspection Data Integrity Bylaw):' : 'Bylaw of Data Immutability:'}
+            </span>
+            <p className="leading-relaxed">
+              {language === 'TH' ? (
+                <>
+                  หลังจากวิศวกรผู้ตรวจสอบและประทับตราลายเซ็นดิจิทัลแล้วเสร็จ ทะเบียนสถานะคำขอจะขยับสู่สถานะ <code className="bg-slate-100 dark:bg-white/10 px-1 py-0.5 rounded text-[#74045F] dark:text-[#C7911B] font-semibold font-mono">AWAITING_APPROVAL</code> ซึ่งจะบล็อกสิทธิและตัดลอจิกตัวเครื่องมิให้ผู้ผลิตไฟฟ้าตัดต่อ แก้ไขตัวเลข หรือปรับขนาดพิกัดงานเด็ดขาด เพื่อความถูกต้องของมาตรฐาน
+                </>
+              ) : (
+                <>
+                  Once the active field inspectors append their valid digital signatures and upload to the server, the record moves to <code className="bg-slate-100 dark:bg-white/10 px-1 py-0.5 rounded text-indigo-650 dark:text-amber-500 font-mono">AWAITING_APPROVAL</code>. Direct edit permissions are strictly severed to prevent retrospective metrics tampering.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 3: แค็ตตาล็อกฟิเจอร์และโมดูลการทำงานภายในแอปพลิเคชัน" : "Chapter 3: All System Features & Functions",
+      subtitle: "Application Modules & Client-Side Design",
+      icon: <Settings size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm animate-fade-in">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+            {language === 'TH' ? 'การออกแบบแบ่งพาร์ทโครงข่ายประยุกต์และตัวเร่งเพื่อประสิทธิภาพการโหลดเบาหวิวข้ามสภาพหน้าจำกัดคลื่น:' : 'Underlying modules and speed strategies configured inside the smart tracker layout:'}
+          </p>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 space-y-2">
+              <h5 className="font-bold text-xs text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="p-1 bg-[#74045F]/10 dark:bg-[#C7911B]/10 text-[#74045F] dark:text-[#C7911B] rounded-lg">📸</span>
+                {language === 'TH' ? '1. ตัวย่อขนาดรูปเบราว์เซอร์ลัดด้วยคณิตกราฟิก (HTML5 Canvas Memory Downscaler)' : '1. On-the-fly Image Downscaling via HTML5 Canvas'}
+              </h5>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-justify">
+                {language === 'TH' ? (
+                  <>
+                    ภาพถ่ายจริงพิกัดขอบร้อนสะสมขั้วต่อในตู้ไฟฟ้า มักมีขนาด 8MB - 12MB ซึ่งยากต่อการอัปสรุปผลระหว่างคลื่นจำกัดเขาสูง โปรแกรมในหน้า <code className="font-mono bg-slate-200 dark:bg-white/10 px-1 py-0.5 rounded text-indigo-600">EquipmentInspection.tsx</code> ดึงรูปขึ้นโหลดวาดเข้าสู่หน่วยความจำ HTML5 Canvas คำนวณขยายเกณฑ์จำกัดค่าสเกลแนวกว้างไม่เกิน 1200px แล้วบีบลงฟอร์แมต <code className="font-mono">image/jpeg</code> คุณภาพ <code className="font-mono text-emerald-500 font-bold">70%</code> ทำให้ตัวไฟล์หดเล็กรวดเร็วเหลือเพียง <code className="font-mono text-emerald-500">150KB - 300KB</code> โกงอัตราสปีดการอัปโหลดข้ามวินาที
+                  </>
+                ) : (
+                  <>
+                    Real photos taken on field often range from 8MB to 12MB. The client-side compressor intercepts files in <code className="font-mono text-sm bg-slate-100 dark:bg-white/10 px-1 rounded">EquipmentInspection.tsx</code>, draws onto temporary HTML5 Canvas, downsamples width limits to 1200px and exports JPEG Base64 quality index at 0.70 (70%) shrinking sizes to raw 150KB - 300KB for bandwidth-friendly uploads.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 space-y-2">
+              <h5 className="font-bold text-xs text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="p-1 bg-[#74045F]/10 dark:bg-[#C7911B]/10 text-[#74045F] dark:text-[#C7911B] rounded-lg">🔌</span>
+                {language === 'TH' ? '2. สเตจแคชสำลองเพื่อหลบจุดอับสัญญาณคลื่น (Offline State Persistence Mirror)' : '2. Offline Work Persistence Safeguard'}
+              </h5>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-justify">
+                {language === 'TH' ? (
+                  <>
+                    ลงลานสนามภูเขาคลื่นดับระงับ ระบบจะผลักลายมือชื่อป้อน และคำข้อมูลจัดเก็บเข้าแคช <code className="font-mono">LocalStorage</code> รอยหน้า เมื่อสัญญาณโทรศัพท์กลับคืนสู่โลกออนไลน์ ไคลเอนต์จะอัปคิวดึงเข้า Firestore ไล่พิกัดทันสมัย ปราศจากบันทึกตกหล่นสูญหาย
+                  </>
+                ) : (
+                  <>
+                    Under zero cellular reception inside metallic substations, inputs and canvas paths are queued inside persistent local structures. Once reception resurrects, the synchronization engine flushes states securely without concurrency faults.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 4: รายการสัญญาอนุญาตซอฟต์แวร์และเครื่องมือประกอบพัฒนา" : "Chapter 4: All System Licenses",
+      subtitle: "Licensing & Dependencies Catalog",
+      icon: <Award size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-justify border-b border-dashed border-slate-205 dark:border-white/10 pb-2">
+            {language === 'TH' ? 'รายการข่ายซอฟต์แวร์ที่สากลยอมรับสำหรับเป้าหมายเปิดต้นโค้ดและปลอดภาระกรรมสิทธิ์หน่วยงานพัฒนา:' : 'List of third-party libraries and their active licenses compiled carefully in the tracker pipeline:'}
+          </p>
+          <div className="overflow-hidden rounded-2xl border border-slate-205 dark:border-white/10 shadow-sm">
+            <table className="w-full text-left border-collapse text-xs text-slate-600 dark:text-slate-300">
+              <thead>
+                <tr className="bg-slate-100 dark:bg-white/5 text-slate-900 dark:text-white font-bold">
+                  <th className="p-3 border-b border-slate-205 dark:border-white/10">{language === 'TH' ? 'ไลบรารีพัฒนา' : 'Dependency Name'}</th>
+                  <th className="p-3 border-b border-slate-205 dark:border-white/10">{language === 'TH' ? 'ใบอนุญาตสากล' : 'License'}</th>
+                  <th className="p-3 border-b border-slate-205 dark:border-white/10">{language === 'TH' ? 'วัตถุประสงค์เชิงลึก' : 'Engineering Purpose'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150 dark:divide-white/5 bg-white/50 dark:bg-transparent">
+                <tr className="hover:bg-slate-55 dark:hover:bg-white/5">
+                  <td className="p-3 font-mono font-bold text-[#74045F] dark:text-[#C7911B]">@google/genai</td>
+                  <td className="p-3"><span className="bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-[10px] font-black">Apache 2.0</span></td>
+                  <td className="p-3 leading-relaxed">{language === 'TH' ? 'เชื่อมโมเดลอัจฉริยะ Gemini 3.5 เพื่อจัดสรุปรายงานไร้ความเสี่ยงด้านลิขสิทธิ์กังวล' : 'Enables native access to Google Gemini models for analytics & schema structures.'}</td>
+                </tr>
+                <tr className="hover:bg-slate-55 dark:hover:bg-white/5">
+                  <td className="p-3 font-mono font-bold text-[#74045F] dark:text-[#C7911B]">React 18 & Vite</td>
+                  <td className="p-3"><span className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-455 px-2 py-0.5 rounded text-[10px] font-black">MIT License</span></td>
+                  <td className="p-3 leading-relaxed">{language === 'TH' ? 'จัดพาร์ทเรนเดอร์ UI คอร์และโมดูลเชื่อมเสริฟรวดเร็วประหยัดแบตเตอรี่ในคอมพิวเตอร์พกพา' : 'Dynamic Virtual DOM renders of inspection logs with quick state hooks.'}</td>
+                </tr>
+                <tr className="hover:bg-slate-55 dark:hover:bg-white/5">
+                  <td className="p-3 font-mono font-bold text-[#74045F] dark:text-[#C7911B]">Tailwind CSS v4</td>
+                  <td className="p-3"><span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 px-2 py-0.5 rounded text-[10px] font-black">MIT License</span></td>
+                  <td className="p-3 leading-relaxed">{language === 'TH' ? 'กำหนดสไตล์รอยหยักประหยัดโหลด คุมธีมแสงประจบแดดจ้าและธีมมืด' : 'Ultra-fast utility CSS for adaptive and eyes-friendly screen designs.'}</td>
+                </tr>
+                <tr className="hover:bg-slate-55 dark:hover:bg-white/5">
+                  <td className="p-3 font-mono font-bold text-[#74045F] dark:text-[#C7911B]">Recharts</td>
+                  <td className="p-3"><span className="bg-amber-500/10 text-amber-600 dark:text-amber-455 px-2 py-0.5 rounded text-[10px] font-black">MIT License</span></td>
+                  <td className="p-3 leading-relaxed">{language === 'TH' ? 'วิเคราะห์กราฟเทรนด์สถิติคุณภาพทางแรงดัน Swells/Sags ให้แก่หน้าแดชบอร์ด' : 'Line and bar visualizations tracking PQ Swells, Sags and Outages.'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 5: โครงสร้างเอกสาร แผนผังฐานข้อมูล และสิทธิ์ความปลอดภัย Firestore" : "Chapter 5: Database Blueprints & Security Rules",
+      subtitle: "Database Blueprints & Security Rules",
+      icon: <ShieldAlert size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+            {language === 'TH' ? 'แผนผัง NoSQL คอลเลกชันหลักและการประจุคีย์เอกสาร (Firestore Database Physical Layout Model):' : 'Detailed database maps in Firestore and relational models applied in the tracker ecosystem:'}
+          </p>
+          
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-2">
+              <strong className="text-[#74045F] dark:text-[#C7911B] font-extrabold block uppercase tracking-wide">📂 Collection: /users {'{uid}'}</strong>
+              <div className="space-y-1 font-mono text-[10px] text-slate-500 dark:text-slate-400 pl-2">
+                <p>• employeeId: <span className="text-emerald-600 dark:text-emerald-400">string (รหัสพนักงาน)</span></p>
+                <p>• name | email: <span className="text-pink-600">string</span></p>
+                <p>• role: <span className="text-blue-500 font-bold">"ADMIN" | "INSPECTOR" | "MANAGER" | "VENDOR"</span></p>
+                <p>• peaOffice | department: <span className="text-indigo-500">string</span></p>
+                <p>• signature: <span className="text-amber-500">string (Base64 vector path)</span></p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-2">
+              <strong className="text-[#74045F] dark:text-[#C7911B] font-extrabold block uppercase tracking-wide">📂 Collection: /powerPlants {'{plantId}'}</strong>
+              <div className="space-y-1 font-mono text-[10px] text-slate-500 dark:text-slate-400 pl-2">
+                <p>• id | name: <span className="text-pink-600">string</span></p>
+                <p>• type: <span className="text-amber-600">"Solar" | "Wind" | "Biomass" | "Waste"</span></p>
+                <p>• capacity: <span className="text-emerald-500">number (Megawatt: MW)</span></p>
+                <p>• connectionPoint: <span className="text-indigo-500">string (จุดเชื่อมโยงสายส่ง)</span></p>
+                <p>• gps: <span className="text-purple-500">object {'{ latitude, longitude }'}</span></p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-2">
+              <strong className="text-[#74045F] dark:text-[#C7911B] font-extrabold block uppercase tracking-wide">📂 Collection: /inspections {'{id}'}</strong>
+              <div className="space-y-1 font-mono text-[10px] text-slate-500 dark:text-slate-400 pl-2">
+                <p>• requestId | inspectorId: <span className="text-pink-600">string</span></p>
+                <p>• inspectorName: <span className="text-pink-600">string</span></p>
+                <p>• geoCheck: <span className="text-indigo-500">{'object { userLat, userLng, distanceMeters }'}</span></p>
+                <p>• formData: <span className="text-emerald-600 font-bold">object (ประวัติการเช็คจุดควบคุม)</span></p>
+                <p>• photos: <span className="text-amber-600">array [string Base64]</span></p>
+                <p>• inspectorSignature: <span className="text-purple-600">string</span></p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-2">
+              <strong className="text-[#74045F] dark:text-[#C7911B] font-extrabold block uppercase tracking-wide">📂 Collection: /complaints {'{id}'}</strong>
+              <div className="space-y-1 font-mono text-[10px] text-slate-500 dark:text-slate-400 pl-2">
+                <p>• trackerId | title: <span className="text-pink-600">string</span></p>
+                <p>• category: <span className="text-amber-600 font-bold">"TECHNICAL" | "ACCOUNT" | "DATA"</span></p>
+                <p>• reporterName | details: <span className="text-pink-600">string</span></p>
+                <p>• status: <span className="text-rose-500 font-bold">"OPEN" | "RESOLVED" | "CLOSED"</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-rose-500/5 rounded-2xl border border-rose-500/20 text-xs text-slate-600 dark:text-slate-400 leading-relaxed text-justify space-y-1">
+            <strong className="text-rose-600 dark:text-rose-400 block uppercase font-bold text-[10px] tracking-widest">
+              {language === 'TH' ? 'สิทธิ์ความปลอดภัยที่ทนทาน (Firestore Security Rules Constraint):' : 'Access Protection via Firestore Security Rules:'}
+            </strong>
+            <p>
+              {language === 'TH' ? (
+                <>
+                  กั้นกระบวนสิทธิ์ในไฟล์ <code className="font-mono bg-slate-100 dark:bg-white/10 px-1 py-0.5 rounded text-rose-600 font-bold">firestore.rules</code> บังคับให้อ่านและเขียนข้อมูลเฉพาะบัญชีผู้ที่ผ่านการเซ็นรับรับรองความถูกต้อง โดยจำกัดตัวเขียน <code className="font-mono">assignedInspector</code> สัมพันธ์เท่านั้น บล็อกสิทธิ์ผู้ค้าไม่ให้เข้ามาเขียนหรือแก้ไขรายงานผู้อื่นโดยพละการเด็ดขาด
+                </>
+              ) : (
+                <>
+                  Strict access control rules deployed in <code className="bg-slate-100 dark:bg-white/10 px-1 rounded font-mono text-xs">firestore.rules</code> dictate that read/write operations for inspections are reserved strictly for the associated inspector ID to block malicious remote document overrides.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 6: ทฤษฎีคณิตศาสตร์พิกัดพื้นผิวโค้ง Geofencing และแบบจำลองระยะ" : "Chapter 6: Geolocation, Geodesy & Haversine formula",
+      subtitle: "Geolocation, Geodesy & Haversine formula",
+      icon: <Globe size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm font-sans">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+            {language === 'TH' ? (
+              <>
+                การระบุระยะผิวโค้งโลกบนสัณฐานทรงกลมที่ระดับเสตจจริงใช้ <strong>สูตรฮาเวอร์ซีน (Haversine Formula)</strong> โดยวัดเปรียบเทียบจากรัศมีของโลกโดยเฉลี่ย $R = 6,371,000$ เมตร เพื่อปิดลูปห้ามอัปโหลดสวมรอยข้ามสิทธิ์กรณีผู้ลงงานอยู่นอกระยะรัศมี <code className="bg-[#74045F]/10 dark:bg-[#C7911B]/10 text-[#74045F] dark:text-[#C7911B] px-1 py-0.5 font-bold rounded">500 เมตร</code>
+              </>
+            ) : (
+              <>
+                To prevent remote reporting fraud, the geofence locks inspection submittals unless the hardware GPS reports coordinates within the <strong>500-meter threshold</strong> of the power station. Calculations leverage the <strong>Great-Circle Haversine Formula</strong> where $R = 6,371,000$ meters.
+              </>
+            )}
+          </p>
+
+          <div className="p-4 bg-slate-950 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/10 font-mono text-[11px] text-slate-300 dark:text-slate-400 space-y-1 leading-relaxed">
+            <span className="font-bold text-indigo-400 block text-xs underline mb-1">{language === 'TH' ? 'ขั้นตอนทางคณิตศาสตร์สากล (Mathematical Haversine steps):' : 'Mathematical Haversine Formula:'}</span>
+            <p>1. dLat = (lat2 - lat1) * Math.PI / 180</p>
+            <p>2. dLon = (lng2 - lng1) * Math.PI / 180</p>
+            <p>3. a = sin²(dLat / 2) + cos(lat1) * cos(lat2) * sin²(dLon / 2)</p>
+            <p>4. c = 2 * atan2(√a, √(1 - a))</p>
+            <p>5. d = EARTH_RADIUS (6,371,000 meters) * c</p>
+          </div>
+
+          {/* Interactive Calculator Card */}
+          <div className="p-5 bg-[#74045F]/5 dark:bg-[#C7911B]/5 rounded-2xl border border-[#74045F]/10 dark:border-[#C7911B]/10 space-y-4 shadow-sm">
+            <h5 className="font-black text-xs uppercase tracking-widest text-[#74045F] dark:text-[#C7911B] flex items-center gap-2">
+              <RefreshCw size={13} className="animate-spin text-[#74045F] dark:text-[#C7911B]" />
+              {language === 'TH' ? 'เครื่องมือคำนวณระยะพิกัดผิวโค้งโลกจำลอง (Haversine Sandbox Calculator)' : 'Haversine Sandbox Live Calculator'}
+            </h5>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1.5">
+                <span className="font-extrabold text-slate-600 dark:text-slate-400 block text-[10px] uppercase">
+                  {language === 'TH' ? 'พิกัดพนักงานตรวจ (ตำแหน่งที่ 1)' : 'Position 1 (Inspector GPS)'}
+                </span>
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <label className="text-[9px] text-slate-400 dark:text-slate-500 font-bold block mb-0.5">Latitude</label>
+                    <input type="number" step="any" value={lat1} onChange={e => setLat1(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2 font-mono text-[11px]" />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="text-[9px] text-slate-400 dark:text-slate-500 font-bold block mb-0.5">Longitude</label>
+                    <input type="number" step="any" value={lng1} onChange={e => setLng1(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2 font-mono text-[11px]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="font-extrabold text-slate-600 dark:text-slate-400 block text-[10px] uppercase">
+                  {language === 'TH' ? 'พิกัดโรงเก็บเป้าหมาย (ตำแหน่งที่ 2)' : 'Position 2 (Power Plant Target)'}
+                </span>
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <label className="text-[9px] text-slate-400 dark:text-slate-500 font-bold block mb-0.5">Latitude</label>
+                    <input type="number" step="any" value={lat2} onChange={e => setLat2(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2 font-mono text-[11px]" />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="text-[9px] text-slate-400 dark:text-slate-500 font-bold block mb-0.5">Longitude</label>
+                    <input type="number" step="any" value={lng2} onChange={e => setLng2(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2 font-mono text-[11px]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-black/30 p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-widest mb-1">
+                {language === 'TH' ? 'ผลลัพธ์ผ่านสูตรคำนวณ Great-Circle Range' : 'Computed Great-Circle Surface Distance'}
+              </span>
+              {distanceResult !== null ? (
+                <div>
+                  <span className="text-xl font-black font-mono text-[#74045F] dark:text-[#C7911B] leading-none block">
+                    {distanceResult.toFixed(2)} เมตร (m)
+                  </span>
+                  <span className={`text-[10px] font-black tracking-wider inline-block mt-2 uppercase px-3 py-1 rounded-full border ${distanceResult <= 500 ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-500 bg-rose-500/10 border-rose-500/20'}`}>
+                    {distanceResult <= 500 ? (language === 'TH' ? '● ในรัศมีตรวจปฏิบัติงานได้ (GEOFENCE ACCEPTED)' : '● Geofence Approved') : (language === 'TH' ? '✕ นอกรัศมีส่งคำสิทธิ์ตรวจ (GEOFENCE ENFORCED BLOCK)' : '✕ Geofence Blocked')}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-rose-500 italic">ตัวเลของศาไม่ครบถ้วน...</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: language === 'TH' ? "บทที่ 7: พิมพ์เขียวความยั่งยืนของระบบและยุทธศาสตร์ Google Gemini AI" : "Chapter 7: Future AI Strategic Roadmap",
+      subtitle: "Enterprise AI Implementation Roadmaps",
+      icon: <Award size={18} />,
+      content: (
+        <div className="space-y-4 text-xs md:text-sm animate-fade-in">
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+            {language === 'TH' ? (
+              <>
+                แผนงานปรับตัวสู่โครงข่ายไฟฟ้าพลังงานยุคหน้าคาร์บอนสุทธิศูนย์ โดยขยายการเรียกคำสั่งโมเดลปัญญาประดิษฐ์สัญจร <code className="font-mono bg-indigo-500/10 px-1 text-indigo-500 rounded">Google Gemini 3.5 Flash</code> และ <code className="font-mono bg-indigo-500/10 px-1 text-indigo-500 rounded">Gemini 3.1 Pro</code> ผ่าน 5 ยอดกลวิเศษนวัตกรรม:
+              </>
+            ) : (
+              <>
+                Evolution path transforming the Smart Tracker platform with generative models <code className="font-mono bg-slate-100 dark:bg-white/10 px-1 rounded text-indigo-500 font-bold">Google Gemini 3.5 Flash</code> using the native TypeScript SDK across 5 critical enterprise use cases:
+              </>
+            )}
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-1">
+              <span className="text-[10px] font-black text-[#74045F] dark:text-[#C7911B] tracking-wide uppercase block">Q1 Target: Multimodal Safety Scan</span>
+              <p className="text-xs text-slate-800 dark:text-white font-bold">{language === 'TH' ? '1. ระบบเฝ้าระวังกราฟิกจุดไหม้สายส่งด่วน' : '1. Thermal & Corrosion Vision Classifier'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'ถ่ายภาพรังสีความร้อนอินฟราเรดแผงสวิตช์ส่งให้ Gemini ตรวจจับอุณหภูมิผิดที่ ขี้สนิมกรามจุดต่อสายไฟ ป้องกันการระเบิดเชิงอัคคีภัยล่วงหน้า (KPI ความแม่นยำ > 95%)' : 'Inspect infrared camera artifacts of panels using multimodal prompts to detect chemical rust build-ups and thermal hotspots before arc explosions occur.'}
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-1">
+              <span className="text-[10px] font-black text-[#74045F] dark:text-[#C7911B] tracking-wide uppercase block">Q2 Target: Voice Integration Co-Pilot</span>
+              <p className="text-xs text-slate-800 dark:text-white font-bold">{language === 'TH' ? '2. สั่งรายงานไร้ถุงมือกรอกด้วยแชทเสียง' : '2. Hands-Free Voice-to-Form Copilot'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'อำนวยแก่พนักงานที่หิ้วอุปกรณ์เครื่องวัดจนนิ้วเลอะคราบน้ำมัน โดยส่งเสียงบันทึกคำเป็นตัวแปร Voltage ปานกลาง ให้ระบบแรพปิ้งหยอดลงฟลอร์แบบฟอร์มให้เอง' : 'Enable field personnel to speak current volt-meters and high-harmonic metrics out-loud which are parsed into structured JSON schemas automatically.'}
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-1">
+              <span className="text-[10px] font-black text-[#74045F] dark:text-[#C7911B] tracking-wide uppercase block">Q3 Target: Executive Smart Summary</span>
+              <p className="text-xs text-slate-800 dark:text-white font-bold">{language === 'TH' ? '3. อนุมัติย่อยเชิงลึกกระดาศแผ่นเดียว' : '3. Executive AI Summarization Stream'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'แปลงรายงานการตรวจเป็นสรุปเข้มกะทัดรัด (One Page Summary) ปักไฮไลท์สีเตือนสัญกรณ์บกพร่อง ให้แก่หัวหน้างานระดับสูงกดเซ็นและเปลี่ยนสถานะรวดเร็ว' : 'Condense dense technical checklists, complaints and annotations into a sharp one-page Th/En executive brief with key warnings optimized.'}
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-51 dark:bg-white/5 rounded-2xl border border-slate-205 dark:border-white/10 space-y-1">
+              <span className="text-[10px] font-black text-[#74045F] dark:text-[#C7911B] tracking-wide uppercase block">Q4-Q5 Target: Outage Predictor</span>
+              <p className="text-xs text-slate-800 dark:text-white font-bold">{language === 'TH' ? '4. วิเคราะห์การกระตุกคลื่นเสี่ยงดรอป' : '4. Predictive Swell/Sag & Outage scheduler'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed text-justify">
+                {language === 'TH' ? 'ดึงบันทึกข้อบกพร่องสถิติของตุ่มโรงไฟฟ้าจำจัดพัด ร่วมความต่างระดับฮาร์มอนิกรายสัปดาห์ คาดวันชำรุดเชิงป้องกันล่วงหน้าเพื่อปิดประตูกระแสวิกฤตดับในลูปส่ง' : 'Aggregating harmonic historical fluctuations and technician notes through timeseries vectors to predict voltage dropouts & set schedules proactively.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  const filteredChapters = chapters.filter(chap =>
+    chap.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chap.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6 animate-slide-in-top pb-10">
+      <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 shadow-xl">
+        <div className="flex flex-row justify-between items-center gap-4 mb-6 border-b border-slate-150 dark:border-white/5 pb-4">
+          <div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+              <BookOpen size={22} className="text-[#74045F] dark:text-[#C7911B]" />
+              <span className="italic">{language === 'TH' ? 'คู่มือสถาปัตยกรรมและเอกสารอ้างอิงข้อมูลทางเทคนิค' : 'Architecture & Technical Guide'}</span>
+            </h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black mt-1">PEA PQ Smart Tracker Reference System v1.1.0</p>
+          </div>
+          <button 
+            onClick={() => setSection('MAIN')} 
+            className="text-xs bg-slate-150 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 font-black text-slate-650 dark:text-slate-300 transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+          >
+            <ArrowLeft size={14} />
+            {language === 'TH' ? 'ย้อนกลับ' : 'Back'}
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="mb-6 relative">
+          <input 
+            type="text"
+            placeholder={language === 'TH' ? "ค้นหาบทคู่มือ หัวข้อ สคีมา หรือคำนวณ..." : "Search chapters, schemas, or calculations..."}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-250 dark:border-white/10 rounded-2xl p-4 pl-12 text-xs md:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner"
+          />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+        </div>
+
+        {/* Dynamic Multi-column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* List panel (left side) */}
+          <div className="lg:col-span-1 space-y-2 lg:border-r border-slate-100 dark:border-white/5 pr-4 max-h-[500px] overflow-y-auto">
+            {filteredChapters.map((chap, i) => {
+              const chapIndex = chapters.indexOf(chap);
+              const isActive = selectedChapter === chapIndex;
+              return (
+                <button
+                  key={`chap-${i}`}
+                  onClick={() => setSelectedChapter(chapIndex)}
+                  className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex items-start gap-3 border ${isActive ? 'bg-[#74045F] dark:bg-[#C7911B] text-white border-[#74045F]/20 dark:border-[#C7911B]/20 shadow-lg shadow-[#74045F]/15 dark:shadow-[#C7911B]/15 scale-[1.01]' : 'bg-transparent border-transparent hover:bg-slate-55 dark:hover:bg-white/5 text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                >
+                  <div className={`mt-0.5 p-1 px-1.5 rounded-lg text-[10px] font-black select-none ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>
+                    0{chapIndex + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-black truncate leading-tight ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'}`}>
+                      {language === 'TH' ? (chap.title.split(': ')[1] || chap.title) : (chap.title.split(': ')[1] || chap.title)}
+                    </p>
+                    <p className={`text-[9px] truncate mt-1 font-semibold ${isActive ? 'text-slate-100/70' : 'text-slate-400 dark:text-slate-500'}`}>
+                      {chap.subtitle}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+            {filteredChapters.length === 0 && (
+              <div className="text-center py-6 text-xs text-slate-400 italic">
+                {language === 'TH' ? 'ไม่พบหัวข้อคู่มือที่คุณค้นหา' : 'No matching chapters found'}
+              </div>
+            )}
+          </div>
+
+          {/* Chapter Content View panel (right side) */}
+          <div className="lg:col-span-2 space-y-4 pl-2 min-h-[350px]">
+            {chapters[selectedChapter] ? (
+              <div className="animate-fade-in space-y-4">
+                <div className="border-b border-dashed border-slate-150 dark:border-white/10 pb-4">
+                  <span className="text-[10px] font-black text-[#74045F] dark:text-[#C7911B] uppercase tracking-widest block mb-1">
+                    CHAPTER 0{selectedChapter + 1}
+                  </span>
+                  <h4 className="text-base font-black text-slate-800 dark:text-white italic leading-tight">
+                    {chapters[selectedChapter].title}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 tracking-wider font-extrabold uppercase mt-1">
+                    {chapters[selectedChapter].subtitle}
+                  </p>
+                </div>
+                
+                <div className="py-2 text-slate-700 dark:text-slate-100">
+                  {chapters[selectedChapter].content}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-slate-400 italic text-xs">
+                {language === 'TH' ? 'กรุณาเลือกบทคู่มือเพื่ออ่านข้อมูลเชิงลึก' : 'Please select a chapter to load system reference details.'}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-  </div>
-);
+      
+      {/* Footer License */}
+      <div className="flex md:flex-row flex-col justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 font-black tracking-wide italic px-2">
+        <span>PEA SYSTEM BLUEPRINT SPECIFICATION PRODUCED ON MAY 2026</span>
+        <span>PEA-PQ-3314-ASSET CONFIDENTIALITY MATRIX</span>
+      </div>
+    </div>
+  );
+};
 
 const SecurityView = ({ t, setSection }: { t: any; setSection: any }) => (
   <div className="space-y-6 animate-slide-in-top">
@@ -1563,6 +2133,7 @@ export const Profile: React.FC<ProfileProps> = ({
           handleDeleteAvatar={handleDeleteAvatar} 
           fileInputRef={fileInputRef} 
           onLogout={onLogout}
+          language={language}
         />
       )}
       {section === 'EDIT_PROFILE' && (
@@ -1589,7 +2160,7 @@ export const Profile: React.FC<ProfileProps> = ({
           setUploadedSignature={setUploadedSignature}
         />
       )}
-      {section === 'NOTIFICATIONS' && <NotificationsView t={t} setSection={setSection} />}
+      {section === 'NOTIFICATIONS' && <NotificationsView t={t} setSection={setSection} language={language} />}
       {section === 'SECURITY' && <SecurityView t={t} setSection={setSection} />}
       {section === 'SETTINGS' && (
         <SettingsView 

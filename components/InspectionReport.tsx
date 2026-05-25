@@ -121,7 +121,7 @@ export const InspectionReport: React.FC<InspectionReportProps> = ({ inspection, 
         </div>
         <div className="text-right">
           <div className="inline-block px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl">
-            <p className="text-[10px] font-bold text-[#000000] uppercase tracking-[0.2em] mb-1">รายงานผลการตรวจเลขที่.</p>
+            <p className="text-[10px] font-bold text-[#000000] uppercase tracking-[0.2em] mb-1">รายงานผลการตรวจเลขที่</p>
             <p className="text-[11px] font-mono font-bold text-[#74045F] mb-4">PEA-SPP-{inspection.id?.substring(8, 16).toUpperCase()}</p>
             <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full border ${inspection.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
               ผลการตรวจสอบ: {inspection.status}

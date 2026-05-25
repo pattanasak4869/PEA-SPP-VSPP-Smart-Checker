@@ -56,6 +56,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
   const [currentCoords, setCurrentCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [geofenceErrorMsg, setGeofenceErrorMsg] = useState<string>('');
+  const [isBypassed, setIsBypassed] = useState<boolean>(false);
 
   // คำนวณระยะทางแบบ Haversine Formula (หน่วยเมตร)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -75,6 +76,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
 
   const verifyGeofence = (plant: any) => {
     if (!plant) return;
+    setIsBypassed(false);
     
     // ดึงพิกัดโรงไฟฟ้า
     const plantLat = parseFloat(plant.gps?.lat);
@@ -221,6 +223,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
     setActiveDraftId(draft?.id || null);
     
     // รีเซ็ตสถานะ Geofencing พร้อมตรวจพิกัดใหม่หมดจด
+    setIsBypassed(false);
     setGeofenceStatus('PENDING');
     setDistance(null);
     setCurrentCoords(null);
@@ -500,7 +503,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                              }
                           }
                         }}
-                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-400 focus:border-[#74045F] outline-none transition-all"
+                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-white focus:border-[#74045F] outline-none transition-all"
                       >
                          <option value="">เลือกโรงไฟฟ้า...</option>
                          {plants.map(p => <option key={p.id} value={p.id}>{p.id} - {p.name}</option>)}
@@ -511,7 +514,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                       <select 
                         value={selectedForm?.id || ''}
                         onChange={(e) => setSelectedForm(forms.find(f => f.id === e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-400 focus:border-[#74045F] outline-none transition-all"
+                        className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-white focus:border-[#74045F] outline-none transition-all"
                       >
                          <option value="">เลือกแบบฟอร์ม...</option>
                          {forms.map(f => {
@@ -691,17 +694,23 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
   );
 
   const FormPhase = () => {
-    const isLocked = geofenceStatus !== 'SUCCESS';
+    const isLocked = geofenceStatus !== 'SUCCESS' && !isBypassed;
 
     return (
       <div className="space-y-8 animate-slide-in-right">
-         <div className="flex justify-between items-center bg-transparent border-none">
+         <div className="flex justify-between items-center">
             <button 
                onClick={() => setStep('SELECTION')}
                className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
             >
                <ArrowLeft size={16} /> ย้อนกลับไปเลือกโรงไฟฟ้า
             </button>
+            {isBypassed && (
+               <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">
+                  <Unlock size={10} />
+                  <span>โหมด Bypass สาธิต (DEMO BYPASS ACTIVE)</span>
+               </div>
+            )}
          </div>
 
          {isLocked ? (
@@ -792,6 +801,24 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                   >
                      <RefreshCw size={16} className={geofenceStatus === 'CHECKING' ? 'animate-spin' : ''} />
                      {geofenceStatus === 'CHECKING' ? 'กำลังดึงพิกัด...' : 'ตรวจพิกัดและยืนยันตำแหน่งใหม่'}
+                  </button>
+
+                  <div className="flex items-center justify-between gap-4">
+                     <div className="flex-1 h-[1px] bg-slate-200 dark:bg-white/10"></div>
+                     <span className="text-[9px] font-black uppercase tracking-widest text-[#C7911B] italic">หรือสำหรับทดสอบ</span>
+                     <div className="flex-1 h-[1px] bg-slate-200 dark:bg-white/10"></div>
+                  </div>
+
+                  <button
+                     type="button"
+                     onClick={() => {
+                        setIsBypassed(true);
+                        addNotification('SUCCESS', 'Sandbox Bypass Mode', 'เปิดใช้งานโหมดสาธิตพิกัดจำลองสำเร็จ');
+                     }}
+                     className="w-full bg-slate-800 hover:bg-slate-900 text-[#C7911B] dark:text-white dark:bg-white/5 dark:hover:bg-white/10 font-bold py-3.5 rounded-2xl text-[10px] uppercase tracking-widest transition-all hover:border-[#C7911B] border border-transparent flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                     <Unlock size={14} />
+                     ข้ามการตรวจสอบ Geofence (Sandbox Demo Bypass)
                   </button>
                </div>
             </div>

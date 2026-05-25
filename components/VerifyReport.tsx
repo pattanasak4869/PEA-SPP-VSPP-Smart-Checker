@@ -86,8 +86,8 @@ export const VerifyReport: React.FC = () => {
             </p>
           </div>
           <div className="bg-white/10 px-6 py-4 rounded-2xl border border-white/20 backdrop-blur-sm text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Validation Key</p>
-            <p className="text-lg font-mono font-black">PEA-VER-X0{inspection.id.substring(0,8).toUpperCase()}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">รายงานผลการตรวจเลขที่</p>
+            <p className="text-lg font-mono font-black">PEA-SPP-{inspection.id?.substring(8, 16).toUpperCase()}</p>
           </div>
         </motion.div>
 

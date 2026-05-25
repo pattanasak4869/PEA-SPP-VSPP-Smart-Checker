@@ -252,7 +252,7 @@ export const VerifyReport: React.FC = () => {
 
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Approver</p>
-              <div className="w-20 h-20 bg-[#74045F]/5 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-[#74045F]/10 shadow-inner">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-[#74045F]/10 shadow-inner">
                 {inspection.managerSignature ? (
                   <img 
                       src={inspection.managerSignature} 

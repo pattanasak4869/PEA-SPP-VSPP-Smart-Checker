@@ -221,11 +221,11 @@ export const VerifyReport: React.FC = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[16px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <Zap size={20} className="text-amber-500" />
                 สรุปผลการประเมิน (Inspection Summary)
               </h3>
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-[14px] leading-relaxed">
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-[12px] leading-relaxed">
                 "{inspection.approvalNote || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}"
               </div>
             </div>
@@ -238,7 +238,8 @@ export const VerifyReport: React.FC = () => {
                 <User size={32} className="text-slate-300" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.inspectorName}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Field Technical Auditor</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ผู้รายงานผลการตรวจสอบ</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">วันที่ลงนาม: {new Date(inspection.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </div>
 
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
@@ -247,7 +248,8 @@ export const VerifyReport: React.FC = () => {
                 <User size={32} className="text-[#74045F]/30" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.managerName || 'Regional Director'}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Supervisory Chief</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ผู้อนุมัติรายงานผลการตรวจสอบ</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">วันที่ลงนาม: {inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '____/____/____'}</p>             
             </div>
 
 

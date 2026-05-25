@@ -136,7 +136,7 @@ export const VerifyReport: React.FC = () => {
           <div className="text-center md:text-left flex-1">
             <h1 className="text-[24px] font-black tracking-tight mb-1 uppercase italic">Verified Authentic</h1>
             <p className="text-emerald-50 text-[12px] opacity-90 leading-relaxed">
-              เอกสารฉบับนี้เป็นเอกสารรายงานผลการตรวจสอบอุปกรณ์โรงไฟฟ้าโดยบุคลากรจากการไฟฟ้าส่วนภูมิภาค เพื่อรับรองว่าอุปกรณ์ดังกล่าวมีมาตรฐานตามเงื่อนไขของการไฟฟ้าส่วนภูมิภาค
+              เอกสารฉบับนี้เป็นเอกสารรายงานผลการตรวจสอบอุปกรณ์โรงไฟฟ้าโดยบุคลากรจาก<br/>การไฟฟ้าส่วนภูมิภาค เพื่อรับรองว่าอุปกรณ์ดังกล่าวเป็นตามเงื่อนไขของการไฟฟ้าส่วนภูมิภาค
             </p>
           </div>
           <div className="bg-white/10 px-6 py-4 rounded-2xl border border-white/20 backdrop-blur-sm text-center">

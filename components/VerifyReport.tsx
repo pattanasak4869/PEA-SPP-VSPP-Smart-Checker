@@ -149,35 +149,35 @@ export const VerifyReport: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20} className="text-[#74045F]" />
                 ข้อมูลพื้นฐานโรงไฟฟ้า (Basic Information)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ชื่อโรงไฟฟ้า</p>
-                  <p className="text-slate-700 font-bold">{inspection.plantName}</p>
+                  <p className="text-[16px] font-black text-slate-400 uppercase tracking-widest">ชื่อโรงไฟฟ้า</p>
+                  <p className="text-slate-700 font-bold text-[14px]">{inspection.plantName}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">สถานะปัจจุบัน</p>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-black">
+                  <p className="text-[16px] font-black text-slate-400 uppercase tracking-widest">สถานะปัจจุบัน</p>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700  text-[14px] font-black">
                     <CheckCircle2 size={12} />
                     {inspection.status}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">วันที่ได้รับอนุมัติ</p>
-                  <p className="text-slate-700 font-bold">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+                  <p className="text-[16px] font-black text-slate-400 uppercase tracking-widest">วันที่ได้รับอนุมัติ</p>
+                  <p className="text-slate-700 font-bold text-[14px]">{inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">หน่วยงานที่ตรวจสอบ</p>
-                  <p className="text-slate-700 font-bold">{inspection.office || 'PEA Regional PQ Team'}</p>
+                  <p className="text-[16px] font-black text-slate-400 uppercase tracking-widest">หน่วยงานที่ตรวจสอบ</p>
+                  <p className="text-slate-700 font-bold text-[14px]">{inspection.office || 'PEA Regional PQ Team'}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20}  className="text-[#74045F]" />
                 ข้อมูลจากการสังเกตภาคสนามและการวัดทางเทคนิค
               </h3>
@@ -221,7 +221,7 @@ export const VerifyReport: React.FC = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+              <h3 className="text-[18px] font-black text-slate-800 mb-6 flex items-center gap-2">
                 <Zap size={20} className="text-amber-500" />
                 สรุปผลการประเมิน (Inspection Summary)
               </h3>

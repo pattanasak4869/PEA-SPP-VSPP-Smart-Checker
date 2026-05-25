@@ -123,14 +123,6 @@ export const VerifyReport: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-6">
-      <style>{`
-        @media print {
-          .print-page-break {
-            break-before: page !important;
-            page-break-before: always !important;
-          }
-        }
-      `}</style>
       <div className="max-w-4xl mx-auto">
         {/* Header Verification Badge */}
         <motion.div 
@@ -184,7 +176,7 @@ export const VerifyReport: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 print:break-before-page print-page-break">
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
               <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
                 <FileText size={20}  className="text-[#74045F]" />
                 ข้อมูลจากการสังเกตภาคสนามและการวัดทางเทคนิค
@@ -202,13 +194,13 @@ export const VerifyReport: React.FC = () => {
                     {Object.entries(inspection.formData || {}).length > 0 ? (
                       Object.entries(inspection.formData || {}).map(([key, value]: [string, any], index) => (
                         <tr key={key} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                          <td className="text-center font-mono text-slate-400 tracking-tighter py-2">
+                          <td className="text-[16px] text-center text-slate-400 tracking-tighter py-2">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          <td className="text-center text-slate-700 py-2">
+                          <td className="text-[16px] text-center text-slate-700 py-2">
                             {getFieldLabel(key)}
                           </td>
-                          <td className="font-mono text-center text-xs text-slate-600 bg-slate-50/50 py-2">
+                          <td className="text-[16px] text-center text-slate-600 bg-slate-50/50 py-2">
                             {Array.isArray(value) ? value.join(', ') : (value || 'NULL')}
                           </td>
                         </tr>
@@ -258,13 +250,7 @@ export const VerifyReport: React.FC = () => {
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Supervisory Chief</p>
             </div>
 
-            <button 
-              onClick={() => window.print()}
-              className="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-            >
-              <FileText size={18} />
-              พิมพ์รายละเอียดใบรับรอง
-            </button>
+
           </div>
         </div>
 

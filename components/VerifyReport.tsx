@@ -185,22 +185,22 @@ export const VerifyReport: React.FC = () => {
                 <table className="w-full technical-table text-left border-collapse">
                   <thead>
                     <tr>
-                      <th className="w-16 text-center py-2 text-[14px]">ลำดับที่</th>
-                      <th className="text-center py-2 text-[14px]">รายการการตรวจสอบ</th>
-                      <th className="w-1/3 text-center py-2 text-[14px]">ค่าผลลัพธ์ของอุปกรณ์</th>
+                      <th className="w-16 text-center py-2 text-[14px] text-[#74045F]">ลำดับที่</th>
+                      <th className="text-center py-2 text-[14px] text-[#74045F]">รายการการตรวจสอบ</th>
+                      <th className="w-1/3 text-center py-2 text-[14px] text-[#74045F]">ค่าผลลัพธ์ของอุปกรณ์</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(inspection.formData || {}).length > 0 ? (
                       Object.entries(inspection.formData || {}).map(([key, value]: [string, any], index) => (
                         <tr key={key} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                          <td className="text-[12px] text-center text-slate-400 tracking-tighter py-2">
+                          <td className="text-[12px] text-center text-slate-700 tracking-tighter py-2">
                             {String(index + 1).padStart(2, '0')}
                           </td>
                           <td className="text-[12px] text-center text-slate-700 py-2">
                             {getFieldLabel(key)}
                           </td>
-                          <td className="text-[12px] text-center text-slate-600 bg-slate-50/50 py-2">
+                          <td className="text-[12px] text-center text-slate-700 bg-slate-50/50 py-2">
                             {Array.isArray(value) ? value.join(', ') : (value || 'NULL')}
                           </td>
                         </tr>

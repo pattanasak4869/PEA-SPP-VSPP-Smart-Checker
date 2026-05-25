@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 export const VerifyReport: React.FC = () => {
   const [inspectionId, setInspectionId] = useState<string | null>(null);
   const [inspection, setInspection] = useState<InspectionResult | null>(null);
+  const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [forms, setForms] = useState<any[]>([]);
 
@@ -24,6 +25,12 @@ export const VerifyReport: React.FC = () => {
       // Simulate fetching from DB (reading from localStorage)
       const inspections = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
       const found = inspections.find(i => i.id === id);
+      
+      if (found && found.requestId) {
+        const requests = safeParseLocalStorage<any[]>('app_inspection_requests', []);
+        const foundReq = requests.find(r => r.id === found.requestId);
+        setRequest(foundReq || null);
+      }
       
       // Artificial delay for realism
       setTimeout(() => {
@@ -172,6 +179,14 @@ export const VerifyReport: React.FC = () => {
                 <div className="space-y-1">
                   <p className="text-[14px] text-[#74045F] font-bold">หน่วยงานที่ตรวจสอบ</p>
                   <p className="text-slate-700 text-[12px]">{inspection.office || 'PEA Regional PQ Team'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[14px] text-[#74045F] font-bold">ผู้ประสานงานตรวจสอบ</p>
+                  <p className="text-slate-700 text-[12px]">{request?.coordinatorName || 'Not Appointed'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[14px] text-[#74045F] font-bold">เบอร์โทรติดต่อ</p>
+                  <p className="text-slate-700 text-[12px]">{request?.coordinatorPhone || '-'}</p>
                 </div>
               </div>
             </div>

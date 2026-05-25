@@ -235,11 +235,11 @@ export const VerifyReport: React.FC = () => {
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Inspector</p>
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-slate-100 shadow-inner">
-                <User size={32} className="text-slate-300" />
+                <User size={32} className="text-[#74045F]/30" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.inspectorName}</p>
-              <p className="text-sm text-slate-800 font-bold mb-1">ผู้รายงานผลการตรวจสอบ</p>
-              <p className="text-sm text-slate-800 font-bold">วันที่ลงนาม: {new Date(inspection.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+              <p className="text-xs text-slate-800 font-bold mb-1">ผู้รายงานผลการตรวจสอบ</p>
+              <p className="text-xs text-slate-800 font-bold">วันที่ลงนาม : {new Date(inspection.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </div>
 
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
@@ -248,8 +248,8 @@ export const VerifyReport: React.FC = () => {
                 <User size={32} className="text-[#74045F]/30" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.managerName || 'Regional Director'}</p>
-              <p className="text-sm text-slate-800 font-bold mb-1">ผู้อนุมัติรายงานผลการตรวจสอบ</p>
-              <p className="text-sm text-slate-800 font-bold">วันที่ลงนาม: {inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '____/____/____'}</p>             
+              <p className="text-xs text-slate-800 font-bold mb-1">ผู้อนุมัติรายงานผลการตรวจสอบ</p>
+              <p className="text-xs text-slate-800 font-bold">วันที่ลงนาม : {inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '____/____/____'}</p>             
             </div>
 
 

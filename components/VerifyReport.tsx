@@ -238,7 +238,7 @@ export const VerifyReport: React.FC = () => {
                 <User size={32} className="text-slate-300" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.inspectorName}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ผู้รายงานผลการตรวจสอบ</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">ผู้รายงานผลการตรวจสอบ</p>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">วันที่ลงนาม: {new Date(inspection.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </div>
 
@@ -248,7 +248,7 @@ export const VerifyReport: React.FC = () => {
                 <User size={32} className="text-[#74045F]/30" />
               </div>
               <p className="text-sm font-black text-slate-800 mb-1">{inspection.managerName || 'Regional Director'}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ผู้อนุมัติรายงานผลการตรวจสอบ</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">ผู้อนุมัติรายงานผลการตรวจสอบ</p>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">วันที่ลงนาม: {inspection.approvedAt ? new Date(inspection.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '____/____/____'}</p>             
             </div>
 

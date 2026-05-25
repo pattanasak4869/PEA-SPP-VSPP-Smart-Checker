@@ -233,8 +233,8 @@ export const VerifyReport: React.FC = () => {
 
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Inspector</p>
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-slate-100 shadow-inner">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">ตรวจสอบโดย</p>
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
             {inspection.inspectorSignature ? (
               <img 
                   src={inspection.inspectorSignature} 
@@ -251,8 +251,8 @@ export const VerifyReport: React.FC = () => {
             </div>
 
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Approver</p>
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-[#74045F]/10 shadow-inner">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">อนุมัติผลการตรวจนสอบโดย</p>
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 {inspection.managerSignature ? (
                   <img 
                       src={inspection.managerSignature} 

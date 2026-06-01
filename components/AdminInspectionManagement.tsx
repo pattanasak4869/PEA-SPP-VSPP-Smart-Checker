@@ -109,7 +109,7 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
       });
       dbRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setRequests(dbRequests);
-      safeSetLocalStorage('app_inspection_requests', dbRequests);
+      safeSetLocalStorage('app_inspection_requests', dbRequests, true);
     }, (error) => {
       console.error("Firestore inspectionRequests Sync Error:", error);
     });
@@ -128,7 +128,7 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
       });
       dbInspections.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setInspections(dbInspections);
-      safeSetLocalStorage('app_inspections', dbInspections);
+      safeSetLocalStorage('app_inspections', dbInspections, true);
     }, (error) => {
       console.error("Firestore inspections Sync Error:", error);
     });

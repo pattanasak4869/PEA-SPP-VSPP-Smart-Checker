@@ -66,7 +66,7 @@ export const InspectionRequestForm: React.FC<InspectionRequestFormProps> = ({ us
 
       setRequests(filteredRequests);
       // Synchronize back to local storage so other components can fetch it locally if needed
-      safeSetLocalStorage('app_inspection_requests', dbRequests);
+      safeSetLocalStorage('app_inspection_requests', dbRequests, true);
     }, (error) => {
       console.error("Firestore inspectionRequests Sync Error:", error);
     });

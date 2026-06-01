@@ -182,7 +182,7 @@ const App: React.FC = () => {
         // Set the syncing flag so write-back doesn't trigger
         setSyncingFromFirestore(true);
         try {
-          safeSetLocalStorage(key, firestoreData);
+          safeSetLocalStorage(key, firestoreData, true);
           // Dispatch a local storage update event to force active UI components to reload
           window.dispatchEvent(new Event('storage'));
         } finally {

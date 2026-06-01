@@ -53,13 +53,13 @@ export const safeGetLocalStorage = (key: string, fallback: string | null = null)
 /**
  * Safely save data to localStorage.
  */
-export const safeSetLocalStorage = <T,>(key: string, data: T): void => {
+export const safeSetLocalStorage = <T,>(key: string, data: T, skipFirestoreSync = false): void => {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
     
     // Sync logic before we mutate local storage to compare old vs. new
     const syncInfo = SYNC_KEYS[key];
-    if (syncInfo && !isSyncingFromFirestore && Array.isArray(data)) {
+    if (syncInfo && !isSyncingFromFirestore && !skipFirestoreSync && Array.isArray(data)) {
       const colName = syncInfo.col;
       const pkField = syncInfo.pk;
       try {

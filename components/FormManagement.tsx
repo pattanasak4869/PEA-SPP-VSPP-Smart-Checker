@@ -150,7 +150,7 @@ export const FormManagement: React.FC<{
         }
       } else {
         setForms(firestoreForms);
-        safeSetLocalStorage('app_inspection_forms', firestoreForms);
+        safeSetLocalStorage('app_inspection_forms', firestoreForms, true);
       }
     }, (error) => {
       console.error("Firestore Forms Sync Error:", error);

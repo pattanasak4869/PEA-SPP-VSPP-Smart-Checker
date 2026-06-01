@@ -347,7 +347,7 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
       
       if (firestorePlants.length > 0) {
         setPlants(firestorePlants);
-        safeSetLocalStorage('power_plants', firestorePlants);
+        safeSetLocalStorage('power_plants', firestorePlants, true);
       }
     }, (error) => {
       console.warn("Firestore Plants Sync Error in Registry:", error);

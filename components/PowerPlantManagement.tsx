@@ -217,7 +217,7 @@ export const PowerPlantManagement: React.FC<{
       
       if (firestorePlants.length > 0) {
         setPlants(firestorePlants);
-        safeSetLocalStorage('power_plants', firestorePlants);
+        safeSetLocalStorage('power_plants', firestorePlants, true);
       }
     }, (error) => {
       console.error("Firestore Plants Sync Error:", error);

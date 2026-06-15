@@ -122,6 +122,17 @@
         background: rgba(0, 0, 0, 0.5);
       }
 
+      /* Dark mode dropdown native styling to prevent invisible select option text */
+      html.dark select {
+        background-color: #110c1c !important; /* Deep dark purple-toned solid background */
+        color: #f8fafc !important; /* High contrast light text */
+      }
+      html.dark select option,
+      html.dark option {
+        background-color: #110c1c !important; /* Solid background for dropdown items */
+        color: #f8fafc !important; /* High contrast light text */
+      }
+
       .status-badge {
         font-size: 10px;
         font-weight: 800;

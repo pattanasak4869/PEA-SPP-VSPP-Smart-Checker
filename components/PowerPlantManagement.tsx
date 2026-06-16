@@ -4,7 +4,8 @@ import {
   Zap, Plus, Search, Edit2, Trash2, MapPin, 
   Mail, Phone, User, Globe, ChevronLeft, ChevronRight,
   MoreVertical, X, Check, Building2, Battery, Radio,
-  Navigation, Filter, Eye, ExternalLink, ShieldAlert, Lock
+  Navigation, Filter, Eye, ExternalLink, ShieldAlert, Lock,
+  Upload, FileSpreadsheet, AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -169,6 +170,40 @@ const REGIONS = [
   }
 ];
 
+export const parseCSV = (text: string) => {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push('');
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += char;
+    }
+  }
+  if (row.length > 1 || row[0] !== '') {
+    lines.push(row);
+  }
+  return lines;
+};
+
 export const PowerPlantManagement: React.FC<{ 
   isDangerZoneUnlocked: boolean;
   setIsDangerZoneUnlocked: (val: boolean) => void;
@@ -194,6 +229,12 @@ export const PowerPlantManagement: React.FC<{
   const [viewingPlant, setViewingPlant] = useState<PowerPlant | null>(null);
   const [plantToDelete, setPlantToDelete] = useState<PowerPlant | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // CSV Import States
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [csvParsedItems, setCsvParsedItems] = useState<PowerPlant[]>([]);
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Initial load from Local Storage (for speed)
@@ -229,6 +270,171 @@ export const PowerPlantManagement: React.FC<{
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const downloadCSVTemplate = () => {
+    const headers = 'name,type,capacity,connectionPoint,region,province,lat,lng,coordinator_name,coordinator_email,coordinator_phone';
+    const exampleRow = 'โรงไฟฟ้าโซลาร์บางเลน,Solar (โซลาร์เซลล์),8.5,สฟ. บางเลน,ภาคกลาง,นครปฐม,14.0234,100.1823,สมชาย มั่นคง,somchai@email.com,081-234-5678';
+    const csvContent = "\uFEFF" + headers + '\n' + exampleRow; // UTF-8 BOM for Thai support in Microsoft Excel
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "pea_powerplant_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvError(null);
+    setCsvParsedItems([]);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) {
+        setCsvError('ไม่พบข้อมูลในไฟล์ หรือไฟล์ว่างเปล่า');
+        return;
+      }
+
+      try {
+        const lines = parseCSV(text);
+        if (lines.length <= 1) {
+          setCsvError('ไม่พบข้อมูลแถวในไฟล์ CSV กรุณาตรวจสอบรูปแบบไฟล์');
+          return;
+        }
+
+        const headers = lines[0].map(h => h.trim().toLowerCase());
+        
+        const findIndex = (keys: string[]) => {
+          return headers.findIndex(h => keys.some(k => h.includes(k) || k.includes(h)));
+        };
+
+        const idxName = findIndex(['name', 'ชื่อ']);
+        const idxType = findIndex(['type', 'ประเภท']);
+        const idxCapacity = findIndex(['capacity', 'กำลังผลิต', 'ขนาด']);
+        const idxConn = findIndex(['connectionpoint', 'จุดเชื่อม', 'connection']);
+        const idxRegion = findIndex(['region', 'ภูมิภาค']);
+        const idxProvince = findIndex(['province', 'จังหวัด']);
+        const idxLat = findIndex(['lat', 'latitude', 'พิกัดเหนือ', 'lat']);
+        const idxLng = findIndex(['lng', 'longitude', 'พิกัดตะวันออก', 'lng']);
+        const idxCoordName = findIndex(['coordinator_name', 'coordinatorname', 'ผู้ประสานงาน', 'ชื่อผู้ประสานงาน']);
+        const idxCoordEmail = findIndex(['coordinator_email', 'coordinatoremail', 'อีเมล', 'email']);
+        const idxCoordPhone = findIndex(['coordinator_phone', 'coordinatorphone', 'เบอร์โทร', 'โทรศัพท์', 'phone']);
+
+        if (idxName === -1) {
+          setCsvError('ไม่พบส่วนหัวคอลัมน์ "ชื่อโรงไฟฟ้า" หรือ "name" ในไฟล์ CSV (กรุณาดาวน์โหลดไฟล์ตัวอย่างด้านล่าง)');
+          return;
+        }
+
+        const parsedPlants: PowerPlant[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i];
+          if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
+
+          const name = row[idxName]?.trim() || '';
+          if (!name) continue; // Skip empty rows or header spacing offset
+
+          const rawType = idxType !== -1 ? row[idxType]?.trim() || '' : '';
+          let matchedType = PLANT_TYPES[0]; // Default
+          for (const t of PLANT_TYPES) {
+            if (t.toLowerCase().includes(rawType.toLowerCase()) || rawType.toLowerCase().includes(t.split(' ')[0].toLowerCase())) {
+              matchedType = t;
+              break;
+            }
+          }
+
+          const rawCapacity = idxCapacity !== -1 ? row[idxCapacity]?.trim() || '0' : '0';
+          const capacity = parseFloat(rawCapacity) || 0;
+
+          const connectionPoint = idxConn !== -1 ? row[idxConn]?.trim() || '' : '';
+          
+          const rawRegion = idxRegion !== -1 ? row[idxRegion]?.trim() || '' : '';
+          let matchedRegion = REGIONS[0].name;
+          for (const reg of REGIONS) {
+            if (reg.name.includes(rawRegion) || rawRegion.includes(reg.name)) {
+              matchedRegion = reg.name;
+              break;
+            }
+          }
+
+          const province = idxProvince !== -1 ? row[idxProvince]?.trim() || '' : '';
+          const lat = idxLat !== -1 ? row[idxLat]?.trim() || '' : '';
+          const lng = idxLng !== -1 ? row[idxLng]?.trim() || '' : '';
+
+          const coordName = idxCoordName !== -1 ? row[idxCoordName]?.trim() || '' : '';
+          const coordEmail = idxCoordEmail !== -1 ? row[idxCoordEmail]?.trim() || '' : '';
+          const coordPhone = idxCoordPhone !== -1 ? row[idxCoordPhone]?.trim() || '' : '';
+
+          const coordinators = [{
+            name: coordName,
+            email: coordEmail,
+            phone: coordPhone
+          }];
+
+          parsedPlants.push({
+            id: `pp-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
+            name,
+            type: matchedType,
+            capacity,
+            connectionPoint,
+            userType: capacity > 10 ? 'SPP' : 'VSPP',
+            region: matchedRegion,
+            province,
+            coordinators,
+            gps: { lat, lng },
+            createdAt: new Date().toISOString()
+          });
+        }
+
+        if (parsedPlants.length === 0) {
+          setCsvError('ไม่พบข้อมูลแถวที่ถูกต้องในไฟล์ CSV');
+        } else {
+          setCsvParsedItems(parsedPlants);
+          setCsvError(null);
+        }
+      } catch (err) {
+        console.error(err);
+        setCsvError('เกิดข้อผิดพลาดในการประมวลผลไฟล์ CSV');
+      }
+    };
+    reader.onerror = () => {
+      setCsvError('เกิดข้อผิดพลาดในการอ่านไฟล์');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSaveCsvItems = async () => {
+    if (csvParsedItems.length === 0) return;
+    setIsUploadingCsv(true);
+
+    try {
+      const updatedPlants = [...csvParsedItems, ...plants];
+      
+      // Update local state and storage
+      setPlants(updatedPlants);
+      safeSetLocalStorage('power_plants', updatedPlants);
+
+      // Save to Firestore asynchronously
+      const promises = csvParsedItems.map(async (plant) => {
+        const plantRef = doc(db, 'powerPlants', plant.id);
+        await setDoc(plantRef, plant);
+      });
+      await Promise.all(promises);
+
+      showToast(`นำเข้าข้อมูลโรงไฟฟ้าสำเร็จ ทั้งหมด ${csvParsedItems.length} รายการ`, 'success');
+      setIsCsvModalOpen(false);
+      setCsvParsedItems([]);
+    } catch (error) {
+      console.error(error);
+      showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูลโรงไฟฟ้าไปยัง Firebase', 'error');
+    } finally {
+      setIsUploadingCsv(false);
+    }
   };
 
   const handleCapacityChange = (val: string) => {
@@ -364,6 +570,18 @@ export const PowerPlantManagement: React.FC<{
                     </motion.div>
                 </button>
             </div>
+
+            <button 
+              onClick={() => {
+                setCsvParsedItems([]);
+                setCsvError(null);
+                setIsCsvModalOpen(true);
+              }}
+              className="bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 font-bold py-3 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 group whitespace-nowrap"
+            >
+              <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" /> 
+              นำเข้า CSV
+            </button>
 
             <button 
               onClick={() => {
@@ -1088,6 +1306,182 @@ export const PowerPlantManagement: React.FC<{
                 >
                   ตกลง
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CSV Import Modal */}
+      <AnimatePresence>
+        {isCsvModalOpen && (
+          <div className="fixed inset-0 xl:left-72 xl:top-[65px] z-[220] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isUploadingCsv) setIsCsvModalOpen(false);
+              }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="glass-panel w-full max-w-4xl bg-white dark:bg-[#030712] rounded-[2rem] overflow-hidden shadow-2xl relative z-10 flex flex-col max-h-[85vh]"
+            >
+              <div className="p-5 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-black/20 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#74045F]/10 dark:bg-[#C7911B]/10 flex items-center justify-center text-[#74045F] dark:text-[#C7911B]">
+                    <FileSpreadsheet size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">นำเข้าข้อมูลโรงไฟฟ้าผ่าน CSV</h2>
+                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-0.5">
+                      อัปโหลดข้อมูลโรงไฟฟ้าหลายรายการคู่ขนานพร้อมกัน
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (!isUploadingCsv) setIsCsvModalOpen(false);
+                  }}
+                  disabled={isUploadingCsv}
+                  className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 custom-scrollbar space-y-6">
+                {/* Upload Section / Drag-Drop Zone */}
+                {csvParsedItems.length === 0 ? (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-slate-200 dark:border-white/10 rounded-3xl p-10 flex flex-col items-center justify-center text-center space-y-4 bg-slate-50/50 dark:bg-white/[0.01] hover:bg-slate-100/10 dark:hover:bg-white/[0.03] transition-all relative">
+                      <input 
+                        type="file" 
+                        accept=".csv"
+                        onChange={handleCsvUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="w-16 h-16 rounded-full bg-[#74045F]/10 dark:bg-[#C7911B]/10 text-[#74045F] dark:text-[#C7911B] flex items-center justify-center">
+                        <Upload size={28} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-slate-700 dark:text-white">เลือกไฟล์ CSV หรือลากไฟล์มาวางที่นี่</p>
+                        <p className="text-xs text-slate-400">รองรับเฉพาะไฟล์ .csv สำหรับข้อมูลโรงไฟฟ้าเท่านั้น</p>
+                      </div>
+                    </div>
+
+                    <div className="p-5 bg-[#74045F]/5 dark:bg-[#C7911B]/5 border border-[#74045F]/10 dark:border-[#C7911B]/10 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="text-[#74045F] dark:text-[#C7911B] flex-shrink-0 mt-0.5" size={18} />
+                        <div>
+                          <p className="text-xs font-black text-[#74045F] dark:text-[#C7911B]">กรุณาใช้รูปแบบตารางคอลัมน์มาตรฐาน</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">คอลัมน์ระบุ ประกอบด้วย: name, type, capacity, connectionPoint, region, province, lat, lng, coordinator_name, coordinator_email, coordinator_phone</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={downloadCSVTemplate}
+                        className="py-2.5 px-5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-[#74045F] dark:text-[#C7911B] shadow-sm flex items-center justify-center gap-2 flex-shrink-0 whitespace-nowrap transition-all"
+                      >
+                        <FileSpreadsheet size={14} />
+                        ดาวน์โหลดไฟล์ตัวอย่าง
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-black text-slate-700 dark:text-white flex items-center gap-2">
+                        <Check className="text-emerald-500" size={18} />
+                        พบข้อมูลโรงไฟฟ้าที่สามารถนำเข้าได้ทั้งหมด {csvParsedItems.length} รายการ
+                      </p>
+                      <button
+                        onClick={() => {
+                          setCsvParsedItems([]);
+                          setCsvError(null);
+                        }}
+                        className="text-xs font-bold text-rose-500 hover:underline"
+                      >
+                        เปลี่ยนไฟล์ใหม่
+                      </button>
+                    </div>
+
+                    {/* Preview Table */}
+                    <div className="border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm max-h-[40vh] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-400 justify-between items-center">
+                            <th className="py-4 px-5">ชื่อโรงไฟฟ้า</th>
+                            <th className="py-4 px-5">ประเภท</th>
+                            <th className="py-4 px-5 text-right">กำลังผลิต (MW)</th>
+                            <th className="py-4 px-5">จุดเชื่อมโยง / จังหวัด</th>
+                            <th className="py-4 px-5">ผู้ประสานงาน</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                          {csvParsedItems.map((item, idx) => (
+                            <tr key={idx} className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
+                              <td className="py-4 px-5 text-slate-900 dark:text-white font-black truncate max-w-[200px]">{item.name}</td>
+                              <td className="py-4 px-5 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                  {item.type.split(' ')[0]}
+                                </span>
+                              </td>
+                              <td className="py-4 px-5 text-right font-mono font-bold text-slate-900 dark:text-white">{item.capacity.toFixed(2)} MW</td>
+                              <td className="py-4 px-5 truncate max-w-[150px]">{item.connectionPoint || '-'} ({item.province || '-'})</td>
+                              <td className="py-4 px-5 truncate max-w-[150px]">{item.coordinators?.[0]?.name || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {csvError && (
+                  <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex items-start gap-3">
+                    <AlertCircle className="text-rose-500 mt-0.5 flex-shrink-0" size={18} />
+                    <div>
+                      <p className="text-xs font-black text-rose-500">ตรวจพบข้อบกพร่องในไฟล์ที่อัปโหลด</p>
+                      <p className="text-[11px] text-rose-600/85 dark:text-rose-400 mt-1">{csvError}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-black/20 border-t border-slate-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between px-8 gap-4 flex-shrink-0">
+                <span className="text-[11px] text-slate-400 font-bold">
+                  * ข้อมูลทั้งหมดจะถูกซิงก์โดยตรงไปยังฐานข้อมูลกลางและ Local Storage
+                </span>
+                <div className="flex gap-3 justify-end">
+                  <button 
+                    disabled={isUploadingCsv}
+                    onClick={() => setIsCsvModalOpen(false)}
+                    className="py-3 px-6 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300 transition-all disabled:opacity-50"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button 
+                    disabled={csvParsedItems.length === 0 || isUploadingCsv}
+                    onClick={handleSaveCsvItems}
+                    className="py-3 px-8 rounded-xl font-black text-xs uppercase tracking-widest text-white bg-gradient-to-r from-[#74045F] to-[#C7911B] shadow-xl hover:shadow-2xl active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 min-w-[140px]"
+                  >
+                    {isUploadingCsv ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        กำลังบันทึก...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        บันทึกเข้าระบบ
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

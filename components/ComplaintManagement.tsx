@@ -12,7 +12,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { MOCK_USERS } from '../constants';
 import { db } from '../src/lib/firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, query, onSnapshot } from 'firebase/firestore';
 
 export interface Complaint {
   id: string;
@@ -96,105 +96,30 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Initialize with dummy data if empty and subscribe to real-time sync updates
+  // Initialize with Firestore query and subscribe to real-time sync updates
   useEffect(() => {
-    const handleStorage = () => {
-      const saved = safeParseLocalStorage<Complaint[]>('app_complaints', []);
-      if (saved.length > 0) {
-        setComplaints(saved);
-      }
-    };
-    
-    window.addEventListener('storage', handleStorage);
+    const q = query(collection(db, 'complaints'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fbComplaints: Complaint[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        fbComplaints.push({
+          ...data,
+          id: doc.id,
+          submittedAt: data.submittedAt?.toDate ? data.submittedAt.toDate().toISOString() : data.submittedAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+        } as Complaint);
+      });
+      
+      // Sort complaints by submittedAt descending
+      fbComplaints.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      setComplaints(fbComplaints);
+      safeSetLocalStorage('app_complaints', fbComplaints, true);
+    }, (error) => {
+      console.error("Firestore Complaints Sync Error:", error);
+    });
 
-    const saved = safeParseLocalStorage<Complaint[]>('app_complaints', []);
-    if (saved.length > 0) {
-      setComplaints(saved);
-    } else {
-      const dummy: Complaint[] = [
-        {
-          id: 'C-001',
-          subject: 'ไม่สามารถนำเข้าข้อมูลแบบฟอร์มได้',
-          description: 'พยายามนำเข้าไฟล์ Excel แล้วระบบขึ้น Error ว่าโครงสร้างไม่ถูกต้อง ทั้งที่ใช้ Template เดิม',
-          category: 'TECHNICAL',
-          priority: 'HIGH',
-          status: 'INVESTIGATING',
-          submittedBy: {
-            name: 'นายสมชาย สายลม',
-            employeeId: '520111',
-            role: 'INSPECTOR',
-            position: 'ช่างสายอากาศ',
-            email: 'somchai.sai@pea.co.th',
-            phone: '081-222-3333',
-            peaOffice: 'การไฟฟ้าส่วนภูมิภาค เขต 3 (ภาคกลาง) จังหวัดนครปฐม',
-            department: 'กองบำรุงรักษาระบบจำหน่าย'
-          },
-          submittedAt: new Date(Date.now() - 86400000).toISOString(),
-          updatedAt: new Date().toISOString(),
-          responses: [
-            {
-              id: 'R-1',
-              message: 'ได้รับเรื่องแล้วครับ กำลังตรวจสอบทีมเทคนิคให้ครับ',
-              author: 'Admin System',
-              role: 'ADMIN',
-              timestamp: new Date(Date.now() - 43200000).toISOString()
-            }
-          ]
-        },
-        {
-          id: 'C-002',
-          subject: 'ขอเพิ่มสิทธิ์การลบโรงไฟฟ้า',
-          description: 'ต้องการสิทธิ์ลบโรงไฟฟ้าที่ไม่มีการใช้งานแล้วในเขตพื้นที่ 5',
-          category: 'ACCOUNT',
-          priority: 'MEDIUM',
-          status: 'PENDING',
-          submittedBy: {
-            name: 'นางกัลยา มุ่งมั่น',
-            employeeId: '485920',
-            role: 'MANAGER',
-            position: 'หัวหน้ากองปฏิบัติการ',
-            email: 'kanlaya.mung@pea.co.th',
-            phone: '089-111-2222',
-            peaOffice: 'การไฟฟ้าส่วนภูมิภาค เขต 3 (ภาคกลาง) จังหวัดนครปฐม',
-            department: 'กองปฏิบัติการ'
-          },
-          submittedAt: new Date(Date.now() - 172800000).toISOString(),
-          updatedAt: new Date(Date.now() - 172800000).toISOString(),
-          responses: []
-        },
-        {
-          id: 'C-003',
-          subject: 'แจ้งพบ Bug ในรายงานสรุป',
-          description: 'รายงานผลงานตรวจสอบของฝ่ายปฏิบัติการแสดงผลซ้ำกันในตาราง',
-          category: 'BUG',
-          priority: 'MEDIUM',
-          status: 'RESOLVED',
-          submittedBy: {
-            name: 'นายวินัย ใฝ่รู้',
-            employeeId: '512370',
-            role: 'INSPECTOR',
-            position: 'วิศวกรไฟฟ้า',
-            email: 'winai.fai@pea.co.th',
-            phone: '085-333-4444',
-            peaOffice: 'การไฟฟ้าส่วนภูมิภาค เขต 3 (ภาคกลาง) จังหวัดนครปฐม',
-            department: 'กองวิศวกรรมการตลาดและการจัดการพลังงาน'
-          },
-          submittedAt: new Date(Date.now() - 259200000).toISOString(),
-          updatedAt: new Date(Date.now() - 86400000).toISOString(),
-          responses: [
-            {
-              id: 'R-2',
-              message: 'ได้รับการอัปเดตระบบเรียบร้อยตามเวอร์ชันล่าสุดแล้วครับ รบกวนตรวจสอบอีกครั้ง',
-              author: 'Admin System',
-              role: 'ADMIN',
-              timestamp: new Date(Date.now() - 86400000).toISOString()
-            }
-          ]
-        }
-      ];
-      setComplaints(dummy);
-      safeSetLocalStorage('app_complaints', dummy);
-    }
+    return () => unsubscribe();
   }, []);
 
   const saveToStorage = (data: Complaint[]) => {

@@ -73,30 +73,38 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
   }, [itemToEditStatus]);
 
   useEffect(() => {
-    // 1. Auxiliary static data loading
-    const refreshAuxData = () => {
-      const loadedPlants = safeParseLocalStorage<any[]>('power_plants', []);
-      const loadedUsers = safeParseLocalStorage<any[]>('app_users', []);
-      const loadedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
-      
-      setPlants(loadedPlants);
-      setVendors(loadedUsers.filter(u => u.role === 'VENDER' || u.role === 'INSPECTOR'));
-      setForms(loadedForms);
-    };
-
-    refreshAuxData();
-    window.addEventListener('storage', refreshAuxData);
-
-    // 2. Load cached local storage values immediately so UI renders instantly
     setIsLoading(true);
-    const loadedRequests = safeParseLocalStorage<InspectionRequest[]>('app_inspection_requests', []);
-    const loadedInspections = safeParseLocalStorage<any[]>('app_inspections', []);
-    setRequests(loadedRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    setInspections(loadedInspections.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    setTimeout(() => setIsLoading(false), 300);
 
-    // 3. Real-time Firestore sync of inspectionRequests
+    const qPlants = query(collection(db, 'powerPlants'));
+    const qUsers = query(collection(db, 'users'));
+    const qForms = query(collection(db, 'inspectionForms'));
     const qRequests = query(collection(db, 'inspectionRequests'));
+    const qInspections = query(collection(db, 'inspections'));
+
+    const unsubPlants = onSnapshot(qPlants, (snapshot) => {
+      const fbPlants: any[] = [];
+      snapshot.forEach(doc => {
+        fbPlants.push({ ...doc.data(), id: doc.id });
+      });
+      setPlants(fbPlants);
+    });
+
+    const unsubUsers = onSnapshot(qUsers, (snapshot) => {
+      const fbUsers: any[] = [];
+      snapshot.forEach(doc => {
+        fbUsers.push(doc.data());
+      });
+      setVendors(fbUsers.filter(u => u.role === 'VENDER' || u.role === 'INSPECTOR'));
+    });
+
+    const unsubForms = onSnapshot(qForms, (snapshot) => {
+      const fbForms: any[] = [];
+      snapshot.forEach(doc => {
+        fbForms.push({ ...doc.data(), id: doc.id });
+      });
+      setForms(fbForms);
+    });
+
     const unsubRequests = onSnapshot(qRequests, (snapshot) => {
       const dbRequests: InspectionRequest[] = [];
       snapshot.forEach((doc) => {
@@ -110,12 +118,12 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
       dbRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setRequests(dbRequests);
       safeSetLocalStorage('app_inspection_requests', dbRequests, true);
+      setIsLoading(false);
     }, (error) => {
       console.error("Firestore inspectionRequests Sync Error:", error);
+      setIsLoading(false);
     });
 
-    // 4. Real-time Firestore sync of inspections (results)
-    const qInspections = query(collection(db, 'inspections'));
     const unsubInspections = onSnapshot(qInspections, (snapshot) => {
       const dbInspections: any[] = [];
       snapshot.forEach((doc) => {
@@ -134,7 +142,9 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
     });
 
     return () => {
-      window.removeEventListener('storage', refreshAuxData);
+      unsubPlants();
+      unsubUsers();
+      unsubForms();
       unsubRequests();
       unsubInspections();
     };

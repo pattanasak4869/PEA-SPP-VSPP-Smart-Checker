@@ -163,56 +163,79 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
     }
   };
 
-  const loadData = () => {
-    // Initial Data Load
-    const savedPlants = safeParseLocalStorage<any[]>('power_plants', []);
-    const savedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
-    const savedRequests = safeParseLocalStorage<InspectionRequest[]>('app_inspection_requests', []);
-    const savedResults = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
+  useEffect(() => {
+    if (!userProfile) return;
+
     const userResponsibleProvince = userProfile?.region;
     const userId = userProfile?.employeeId || userProfile?.username;
-    
-    // Filter plants for inspector's responsible province
-    if (userProfile?.role === 'INSPECTOR' && userResponsibleProvince) {
-      setPlants(savedPlants.filter((p: any) => 
-        // If it's an inspector, match the plant's province with their responsible province (region)
-        p.province === userResponsibleProvince
-      ));
-    } else if (userProfile?.role === 'VENDER') {
-      const userOffice = userProfile?.peaOffice || userProfile?.department;
-      setPlants(savedPlants.filter((p: any) => p.office === userOffice || (p.vendorId === userId && !p.office)));
-    } else {
-      setPlants(savedPlants);
-    }
-    
-    setForms(savedForms.filter((f: any) => f.status === 'ACTIVE'));
+    const userOffice = userProfile?.peaOffice || userProfile?.department;
 
-    // Filter inbox requests for inspector's responsible area
-    setInboxRequests(savedRequests.filter((r: InspectionRequest) => {
-      const isPending = r.status === 'PENDING';
-      
+    const qPlants = query(collection(db, 'powerPlants'));
+    const qForms = query(collection(db, 'inspectionForms'));
+    const qRequests = query(collection(db, 'inspectionRequests'));
+    const qResults = query(collection(db, 'inspections'));
+
+    let allPlantsLocal: any[] = [];
+
+    const unsubPlants = onSnapshot(qPlants, (snapshot) => {
+      const fbPlants: any[] = [];
+      snapshot.forEach(doc => {
+        fbPlants.push({ ...doc.data(), id: doc.id });
+      });
+      allPlantsLocal = fbPlants;
+
       if (userProfile?.role === 'INSPECTOR' && userResponsibleProvince) {
-        // Find the plant to check its province
-        const plant = savedPlants.find((p: any) => p.id === r.plantId);
-        return isPending && plant?.province === userResponsibleProvince;
+        setPlants(fbPlants.filter((p: any) => p.province === userResponsibleProvince));
+      } else if (userProfile?.role === 'VENDER') {
+        setPlants(fbPlants.filter((p: any) => p.office === userOffice || (p.vendorId === userId && !p.office)));
+      } else {
+        setPlants(fbPlants);
       }
-      
-      const userOffice = userProfile?.peaOffice || userProfile?.department;
-      const matchesOffice = !r.office || r.office === userOffice;
-      return isPending && matchesOffice;
-    }));
+    });
 
-    // Filter drafts for current user
-    setDrafts(savedResults.filter((r: InspectionResult) => 
-      r.status === 'DRAFT' && r.inspectorId === userId
-    ));
-  };
+    const unsubForms = onSnapshot(qForms, (snapshot) => {
+      const fbForms: any[] = [];
+      snapshot.forEach(doc => {
+        fbForms.push({ ...doc.data(), id: doc.id });
+      });
+      setForms(fbForms.filter((f: any) => f.status === 'ACTIVE'));
+    });
 
-  useEffect(() => {
-    loadData();
-    window.addEventListener('storage', loadData);
+    const unsubRequests = onSnapshot(qRequests, (snapshot) => {
+      const fbRequests: any[] = [];
+      snapshot.forEach(doc => {
+        fbRequests.push({ ...doc.data(), id: doc.id });
+      });
+
+      setInboxRequests(fbRequests.filter((r: any) => {
+        const isPending = r.status === 'PENDING';
+        
+        if (userProfile?.role === 'INSPECTOR' && userResponsibleProvince) {
+          const plant = allPlantsLocal.find((p: any) => p.id === r.plantId);
+          return isPending && (!plant || plant.province === userResponsibleProvince);
+        }
+        
+        const matchesOffice = !r.office || r.office === userOffice;
+        return isPending && matchesOffice;
+      }));
+    });
+
+    const unsubResults = onSnapshot(qResults, (snapshot) => {
+      const fbResults: any[] = [];
+      snapshot.forEach(doc => {
+        fbResults.push({ ...doc.data(), id: doc.id });
+      });
+
+      setDrafts(fbResults.filter((r: any) => 
+        r.status === 'DRAFT' && r.inspectorId === userId
+      ));
+    });
+
     return () => {
-      window.removeEventListener('storage', loadData);
+      unsubPlants();
+      unsubForms();
+      unsubRequests();
+      unsubResults();
     };
   }, [userProfile]);
 
@@ -312,7 +335,6 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
       setConfirmDeleteId(null);
       
       // 6. Final sync
-      loadData();
     } catch (err) {
       console.error('Delete draft failed:', err);
       addNotification('ALERT', 'ระบบประเมิน', 'ไม่สามารถลบข้อมูลได้ในขณะนี้');
@@ -426,7 +448,6 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
     } finally {
       setIsSubmitting(false);
       // Refresh local data
-      loadData();
     }
   };
 

@@ -123,14 +123,17 @@
       }
 
       /* Dark mode dropdown native styling to prevent invisible select option text */
-      html.dark select {
-        background-color: #110c1c !important; /* Deep dark purple-toned solid background */
-        color: #f8fafc !important; /* High contrast light text */
-      }
+      html.dark select,
       html.dark select option,
-      html.dark option {
-        background-color: #110c1c !important; /* Solid background for dropdown items */
-        color: #f8fafc !important; /* High contrast light text */
+      html.dark option,
+      html.dark select *,
+      html.dark .glass-input option,
+      .dark select,
+      .dark select option,
+      .dark option,
+      .dark select * {
+        background-color: #1e1b4b !important; /* Explicit deep solid purple-indigo background */
+        color: #ffffff !important; /* Explicit high-contrast white text */
       }
 
       .status-badge {

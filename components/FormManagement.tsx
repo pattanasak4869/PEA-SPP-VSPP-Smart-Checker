@@ -86,32 +86,7 @@ export const FormManagement: React.FC<{
   });
 
   useEffect(() => {
-    // 1. Initial Load from Local Storage (for instant rendering)
-    const savedForms = safeParseLocalStorage<InspectionForm[]>('app_inspection_forms', []);
-    if (savedForms.length > 0) {
-      setForms(savedForms);
-    } else {
-      const initialForms: InspectionForm[] = [
-        {
-          id: 'form-1',
-          title: 'แบบฟอร์มตรวจสอบคุณภาพไฟฟ้า (PQ)',
-          description: 'แบบฟอร์มมาตรฐานสำหรับการเข้าตรวจสอบคุณภาพไฟฟ้า ณ โรงไฟฟ้า SPP/Vender',
-          version: '1.0',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          createdBy: 'System Admin',
-          fields: [
-            { id: 'f1', label: 'ชื่อโรงไฟฟ้า', type: 'text', required: true, placeholder: 'ระบุชื่อโรงไฟฟ้า' },
-            { id: 'f2', label: 'วันที่เริ่มงาน', type: 'date', required: true },
-            { id: 'f3', label: 'ระดับแรงดัน', type: 'select', required: true, options: ['115kV', '22kV', '33kV'] }
-          ]
-        }
-      ];
-      setForms(initialForms);
-    }
-
-    // 2. Real-time Firestore sync
+    // Real-time Firestore sync
     const q = query(collection(db, 'inspectionForms'));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const firestoreForms: InspectionForm[] = [];

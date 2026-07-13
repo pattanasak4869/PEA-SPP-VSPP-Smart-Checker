@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeParseLocalStorage, safeSetLocalStorage, safeRemoveLocalStorage } from '../utils/localStorageUtils';
 import { MOCK_USERS } from '../constants';
+import { db } from '../src/lib/firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 
 export type LoginStatus = 'SUCCESS' | 'FAILED' | 'BLOCKED' | 'LOGOUT';
 
@@ -53,6 +55,9 @@ export const LoginManagement: React.FC<{
   onForceLogout?: (userId: string) => void;
 }> = ({ isDangerZoneUnlocked, setIsDangerZoneUnlocked, setIsUnlockModalOpen, onlineUsers = [], onForceLogout }) => {
   const { t } = useLanguage();
+  const refreshData = () => {
+    console.log("Real-time stream is active. Data is automatically synchronized.");
+  };
   const [logs, setLogs] = useState<LoginLog[]>([]);
   const [userAccess, setUserAccess] = useState<UserAccessControl[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,87 +73,36 @@ export const LoginManagement: React.FC<{
 
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
 
-  const refreshData = () => {
-    // Initial Setup and Data Merging
-    const mockLogs: LoginLog[] = [
-      {
-        id: 'log-1',
-        userId: '509034',
-        userName: MOCK_USERS.find(u => u.employeeId === '509034')?.name || 'N/A',
-        email: MOCK_USERS.find(u => u.employeeId === '509034')?.email || 'N/A',
-        status: 'SUCCESS',
-        ipAddress: '182.52.124.9',
-        location: 'กฟจ.นครปฐม (Office LAN)',
-        device: 'MacBook Pro (macOS 14.4)',
-        browser: 'Chrome 123.0.0',
-        timestamp: new Date().toISOString(),
-        isMock: true
-      },
-      {
-        id: 'log-2',
-        userId: '512370',
-        userName: MOCK_USERS.find(u => u.employeeId === '512370')?.name || 'N/A',
-        email: MOCK_USERS.find(u => u.employeeId === '512370')?.email || 'N/A',
-        status: 'FAILED',
-        ipAddress: '49.237.34.112',
-        location: 'Nakhon Pathom (Mobile 5G)',
-        device: 'iPhone 15 Pro (iOS 17.4)',
-        browser: 'Safari Mobile',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        failureReason: 'Invalid Password',
-        isMock: true
-      },
-      {
-        id: 'log-3',
-        userId: '498232',
-        userName: MOCK_USERS.find(u => u.employeeId === '498232')?.name || 'N/A',
-        email: MOCK_USERS.find(u => u.employeeId === '498232')?.email || 'N/A',
-        status: 'BLOCKED',
-        ipAddress: '203.150.12.3',
-        location: 'Admin Building (Floor 2)',
-        device: 'Windows 11 Desktop',
-        browser: 'Edge 122.0.0',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        failureReason: 'Too many failed attempts',
-        isMock: true
-      },
-      {
-        id: 'log-4',
-        userId: '556820',
-        userName: MOCK_USERS.find(u => u.employeeId === '556820')?.name || 'N/A',
-        email: MOCK_USERS.find(u => u.employeeId === '556820')?.email || 'N/A',
-        status: 'SUCCESS',
-        ipAddress: '1.2.3.4',
-        location: 'Remote Access (VPN)',
-        device: 'iPad Pro (iPadOS 17)',
-        browser: 'Safari',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        isMock: true
-      },
-      {
-        id: 'log-5',
-        userId: '520111',
-        userName: MOCK_USERS.find(u => u.employeeId === '520111')?.name || 'N/A',
-        email: MOCK_USERS.find(u => u.employeeId === '520111')?.email || 'N/A',
-        status: 'SUCCESS',
-        ipAddress: '171.100.22.45',
-        location: ' substation NPT',
-        device: 'Android Tablet',
-        browser: 'Chrome Mobile',
-        timestamp: new Date(Date.now() - 10800000).toISOString(),
-        isMock: true
-      }
-    ];
+  useEffect(() => {
+    // Real-time Firestore sync
+    const qLogs = query(collection(db, 'loginLogs'));
+    const qUsers = query(collection(db, 'users'));
 
-    const storedLogs = safeParseLocalStorage<LoginLog[]>('login_logs', []);
-    
-    // Merge: Stored logs first (sorted by timestamp descending in storage)
-    setLogs([...storedLogs, ...mockLogs].slice(0, 100));
+    const unsubLogs = onSnapshot(qLogs, (snapshot) => {
+      const fbLogs: LoginLog[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        fbLogs.push({
+          ...data,
+          id: doc.id,
+          timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : data.timestamp
+        } as LoginLog);
+      });
+      // Sort logs by timestamp descending
+      fbLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setLogs(fbLogs);
+      safeSetLocalStorage('login_logs', fbLogs, true);
+    }, (error) => {
+      console.error("Firestore Login Logs Sync Error:", error);
+    });
 
-    // 2. User Access Processing (From app_users storage)
-    const storedUsers = safeParseLocalStorage<any[]>('app_users', []);
-    if (storedUsers.length > 0) {
-      const accessData: UserAccessControl[] = storedUsers.map((u: any) => {
+    const unsubUsers = onSnapshot(qUsers, (snapshot) => {
+      const fbUsers: any[] = [];
+      snapshot.forEach((doc) => {
+        fbUsers.push(doc.data());
+      });
+
+      const accessData: UserAccessControl[] = fbUsers.map((u: any) => {
         const userId = u.employeeId || u.username;
         return {
           userId,
@@ -162,42 +116,14 @@ export const LoginManagement: React.FC<{
         };
       });
       setUserAccess(accessData);
-    } else {
-      // Fallback or Initial mock access
-      const mockAccess: UserAccessControl[] = MOCK_USERS.map(u => ({
-        userId: u.employeeId,
-        email: u.email,
-        userName: u.name,
-        role: u.role,
-        isLocked: u.status === 'INACTIVE',
-        failedAttempts: 0,
-        lastLogin: u.employeeId === '509034' ? new Date().toISOString() : 
-                   u.employeeId === '512370' ? new Date(Date.now() - 3600000).toISOString() :
-                   u.employeeId === '498232' ? new Date(Date.now() - 7200000).toISOString() :
-                   null,
-        status: u.status === 'INACTIVE' ? 'SUSPENDED' : (u.employeeId === '509034' ? 'ONLINE' : 'OFFLINE')
-      }));
-      setUserAccess(mockAccess);
-    }
-  };
+    }, (error) => {
+      console.error("Firestore Users Sync Error in LoginManagement:", error);
+    });
 
-  useEffect(() => {
-    refreshData();
-    // Refresh data periodically or on tab focus
-    window.addEventListener('focus', refreshData);
-    window.addEventListener('storage', refreshData);
     return () => {
-      window.removeEventListener('focus', refreshData);
-      window.removeEventListener('storage', refreshData);
+      unsubLogs();
+      unsubUsers();
     };
-  }, []);
-
-  // Update status reactively when onlineUsers list changes
-  useEffect(() => {
-    setUserAccess(prev => prev.map(u => ({
-      ...u,
-      status: u.isLocked ? 'SUSPENDED' : (onlineUsers.includes(u.userId) ? 'ONLINE' : 'OFFLINE')
-    })));
   }, [onlineUsers]);
 
   const handleDeleteLog = (logId: string) => {

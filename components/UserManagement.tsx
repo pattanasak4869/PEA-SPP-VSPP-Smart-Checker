@@ -103,13 +103,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         fbUsers.push(doc.data() as AppUser);
       });
       
-      if (fbUsers.length > 0) {
-        setUsers(fbUsers);
-      } else {
-        // If Firestore is empty, we might want to seed it with MOCK_USERS 
-        // but only if the user explicitly asks for it to avoid unwanted writes
-        setUsers(MOCK_USERS as AppUser[]);
-      }
+      setUsers(fbUsers);
     }, (error) => {
       console.error("Firestore snapshot error:", error);
       showToast("ไม่สามารถโหลดข้อมูลจาก Database ได้", "error");

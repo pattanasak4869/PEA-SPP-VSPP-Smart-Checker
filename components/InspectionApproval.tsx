@@ -13,6 +13,8 @@ import { InspectionResult } from '../types';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { useNotifications } from '../contexts/NotificationContext';
 import { SignatureModal } from './SignatureModal';
+import { db } from '../src/lib/firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 
 interface InspectionApprovalProps {
   userProfile: any;
@@ -23,6 +25,10 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
   const { addNotification } = useNotifications();
   const [view, setView] = useState<'LIST' | 'DETAIL'>('LIST');
   const [activeTab, setActiveTab] = useState<'PENDING' | 'HISTORY'>('PENDING');
+  
+  const refreshData = () => {
+    console.log("Real-time stream is active. Data is automatically synchronized.");
+  };
   const [inspections, setInspections] = useState<InspectionResult[]>([]);
   const [historyInspections, setHistoryInspections] = useState<InspectionResult[]>([]);
   const [forms, setForms] = useState<any[]>([]);
@@ -99,68 +105,70 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
   const [approvalNote, setApprovalNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const refreshData = () => {
-    const savedInspections = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
-    const loadedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
-    setForms(loadedForms);
-    
+  useEffect(() => {
+    if (!userProfile) return;
+
     const userRole = userProfile?.role;
     const userOffice = userProfile?.peaOffice;
     const userDept = userProfile?.department;
-    
-    console.log('Approval Page Refresh:', { 
-      currentUser: userProfile?.username,
-      role: userRole, 
-      office: userOffice,
-      dept: userDept,
-      totalInStorage: savedInspections.length
-    });
-    
-    // Pending
-    const pending = savedInspections.filter((ins: any) => {
-      // 1. Basic Status Check
-      const isPending = ins.status === 'SUBMITTED';
-      if (!isPending) return false;
-      
-      // 2. Admin sees everything
-      if (userRole === 'ADMIN') return true;
-      
-      // 3. Manager visibility logic
-      // Managers only see inspections from their same office and department
-      if (userRole === 'MANAGER') {
-        const matchesOffice = !userOffice || ins.office === userOffice;
-        const matchesDept = !userDept || ins.department === userDept;
-        return matchesOffice && matchesDept;
-      }
-      
-      return false; 
+
+    const qInspections = query(collection(db, 'inspections'));
+    const qForms = query(collection(db, 'inspectionForms'));
+
+    const unsubForms = onSnapshot(qForms, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(doc => {
+        list.push({ ...doc.data(), id: doc.id });
+      });
+      setForms(list);
     });
 
-    // History
-    const history = savedInspections.filter((ins: any) => {
-      const isProcessed = ins.status === 'APPROVED' || ins.status === 'REJECTED';
-      if (!isProcessed) return false;
-      
-      if (userRole === 'ADMIN') return true;
-      if (userRole === 'MANAGER') {
-        // Managers only see their processed items from their same office and department
-        const matchesOffice = !userOffice || ins.office === userOffice;
-        const matchesDept = !userDept || ins.department === userDept;
-        return matchesOffice && matchesDept;
-      }
-      return false; 
+    const unsubInspections = onSnapshot(qInspections, (snapshot) => {
+      const list: InspectionResult[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+        } as InspectionResult);
+      });
+
+      // Pending
+      const pending = list.filter((ins: any) => {
+        const isPending = ins.status === 'SUBMITTED';
+        if (!isPending) return false;
+        if (userRole === 'ADMIN') return true;
+        if (userRole === 'MANAGER') {
+          const matchesOffice = !userOffice || ins.office === userOffice;
+          const matchesDept = !userDept || ins.department === userDept;
+          return matchesOffice && matchesDept;
+        }
+        return false; 
+      });
+
+      // History
+      const history = list.filter((ins: any) => {
+        const isProcessed = ins.status === 'APPROVED' || ins.status === 'REJECTED';
+        if (!isProcessed) return false;
+        if (userRole === 'ADMIN') return true;
+        if (userRole === 'MANAGER') {
+          const matchesOffice = !userOffice || ins.office === userOffice;
+          const matchesDept = !userDept || ins.department === userDept;
+          return matchesOffice && matchesDept;
+        }
+        return false; 
+      });
+
+      setInspections(pending);
+      setHistoryInspections(history);
+    }, (error) => {
+      console.error("Firestore Inspections Sync Error in Approval:", error);
     });
 
-    console.log('Filtered Results:', { pending: pending.length, history: history.length });
-    setInspections(pending);
-    setHistoryInspections(history);
-  };
-
-  useEffect(() => {
-    refreshData();
-    window.addEventListener('storage', refreshData);
     return () => {
-      window.removeEventListener('storage', refreshData);
+      unsubForms();
+      unsubInspections();
     };
   }, [userProfile]);
 

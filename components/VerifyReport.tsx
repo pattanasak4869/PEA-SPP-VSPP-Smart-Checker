@@ -4,6 +4,8 @@ import { InspectionResult } from '../types';
 import { safeParseLocalStorage } from '../utils/localStorageUtils';
 import { CheckCircle2, AlertCircle, FileText, Calendar, User, Zap, Mail, Phone, ShieldCheck, MapPin, Info } from 'lucide-react';
 import { motion } from 'motion/react';
+import { db } from '../src/lib/firebase';
+import { doc, getDoc, getDocs, collection } from 'firebase/firestore';
 
 export const VerifyReport: React.FC = () => {
   const [inspectionId, setInspectionId] = useState<string | null>(null);
@@ -13,33 +15,53 @@ export const VerifyReport: React.FC = () => {
   const [forms, setForms] = useState<any[]>([]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('verify');
-    setInspectionId(id);
+    const fetchVerificationData = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('verify');
+      setInspectionId(id);
 
-    // Load available forms for translation labels
-    const cachedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
-    setForms(cachedForms);
-
-    if (id) {
-      // Simulate fetching from DB (reading from localStorage)
-      const inspections = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
-      const found = inspections.find(i => i.id === id);
-      
-      if (found && found.requestId) {
-        const requests = safeParseLocalStorage<any[]>('app_inspection_requests', []);
-        const foundReq = requests.find(r => r.id === found.requestId);
-        setRequest(foundReq || null);
+      if (!id) {
+        setLoading(false);
+        return;
       }
-      
-      // Artificial delay for realism
-      setTimeout(() => {
-        setInspection(found || null);
-        setLoading(loading => false);
-      }, 1500);
-    } else {
-      setLoading(false);
-    }
+
+      try {
+        // 1. Fetch Inspection Form definitions for labels (from Firestore)
+        const formsSnap = await getDocs(collection(db, 'inspectionForms'));
+        const formsList: any[] = [];
+        formsSnap.forEach(doc => {
+          formsList.push({ ...doc.data(), id: doc.id });
+        });
+        setForms(formsList);
+
+        // 2. Fetch the specific Inspection Result document (from Firestore)
+        const inspectionDocRef = doc(db, 'inspections', id);
+        const inspectionSnap = await getDoc(inspectionDocRef);
+
+        if (inspectionSnap.exists()) {
+          const foundInspection = {
+            ...inspectionSnap.data(),
+            id: inspectionSnap.id
+          } as InspectionResult;
+          setInspection(foundInspection);
+
+          // 3. Fetch associated request if it exists (from Firestore)
+          if (foundInspection.requestId) {
+            const requestDocRef = doc(db, 'inspectionRequests', foundInspection.requestId);
+            const requestSnap = await getDoc(requestDocRef);
+            if (requestSnap.exists()) {
+              setRequest({ ...requestSnap.data(), id: requestSnap.id });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Verification retrieval failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVerificationData();
   }, []);
 
   const getFieldLabel = (key: string) => {

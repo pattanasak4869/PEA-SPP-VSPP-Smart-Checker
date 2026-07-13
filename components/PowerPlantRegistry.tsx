@@ -322,38 +322,82 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
   };
 
   useEffect(() => {
-    // 1. Initial Load from Local Storage
-    const savedPlants = safeParseLocalStorage<PowerPlant[]>('power_plants', []);
-    const savedInspections = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
-    const savedRequests = safeParseLocalStorage<any[]>('app_inspection_requests', []);
-    const savedForms = safeParseLocalStorage<any[]>('app_inspection_forms', []);
-    setPlants(savedPlants);
-    setInspections(savedInspections);
-    setRequests(savedRequests);
-    setForms(savedForms);
+    // Real-time direct sync from Firestore collections
+    const qPlants = query(collection(db, 'powerPlants'));
+    const qInspections = query(collection(db, 'inspections'));
+    const qRequests = query(collection(db, 'inspectionRequests'));
+    const qForms = query(collection(db, 'inspectionForms'));
 
-    // 2. Real-time sync from Firestore for Plants
-    const q = query(collection(db, 'powerPlants'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const firestorePlants: PowerPlant[] = [];
+    const unsubPlants = onSnapshot(qPlants, (snapshot) => {
+      const list: PowerPlant[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        firestorePlants.push({
+        list.push({
           ...data,
           id: doc.id,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
         } as PowerPlant);
       });
-      
-      if (firestorePlants.length > 0) {
-        setPlants(firestorePlants);
-        safeSetLocalStorage('power_plants', firestorePlants, true);
-      }
+      setPlants(list);
+      safeSetLocalStorage('power_plants', list, true);
     }, (error) => {
       console.warn("Firestore Plants Sync Error in Registry:", error);
     });
 
-    return () => unsubscribe();
+    const unsubInspections = onSnapshot(qInspections, (snapshot) => {
+      const list: InspectionResult[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+        } as InspectionResult);
+      });
+      setInspections(list);
+      safeSetLocalStorage('app_inspections', list, true);
+    }, (error) => {
+      console.warn("Firestore Inspections Sync Error in Registry:", error);
+    });
+
+    const unsubRequests = onSnapshot(qRequests, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+        });
+      });
+      setRequests(list);
+      safeSetLocalStorage('app_inspection_requests', list, true);
+    }, (error) => {
+      console.warn("Firestore Requests Sync Error in Registry:", error);
+    });
+
+    const unsubForms = onSnapshot(qForms, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+        });
+      });
+      setForms(list);
+      safeSetLocalStorage('app_inspection_forms', list, true);
+    }, (error) => {
+      console.warn("Firestore Forms Sync Error in Registry:", error);
+    });
+
+    return () => {
+      unsubPlants();
+      unsubInspections();
+      unsubRequests();
+      unsubForms();
+    };
   }, []);
 
   const handleViewDetails = (plant: any) => {

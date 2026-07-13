@@ -237,13 +237,7 @@ export const PowerPlantManagement: React.FC<{
   const [csvError, setCsvError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Initial load from Local Storage (for speed)
-    const savedPlants = safeParseLocalStorage<PowerPlant[]>('power_plants', []);
-    if (savedPlants.length > 0) {
-      setPlants(savedPlants);
-    }
-
-    // 2. Real-time sync from Firestore
+    // Real-time sync from Firestore
     const q = query(collection(db, 'powerPlants'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const firestorePlants: PowerPlant[] = [];
@@ -256,10 +250,8 @@ export const PowerPlantManagement: React.FC<{
         } as PowerPlant);
       });
       
-      if (firestorePlants.length > 0) {
-        setPlants(firestorePlants);
-        safeSetLocalStorage('power_plants', firestorePlants, true);
-      }
+      setPlants(firestorePlants);
+      safeSetLocalStorage('power_plants', firestorePlants, true);
     }, (error) => {
       console.error("Firestore Plants Sync Error:", error);
     });

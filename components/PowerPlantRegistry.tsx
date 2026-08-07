@@ -132,6 +132,8 @@ const REGIONS = [
   { name: 'ภาคใต้', provinces: ['กระบี่', 'ชุมพร', 'ตรัง', 'นครศรีธรรมราช', 'นราธิวาส', 'ปัตตานี', 'พังงา', 'พัทลุง', 'ภูเก็ต', 'ยะลา', 'ระนอง', 'สงขลา', 'สตูล', 'สุราษฎร์ธานี'] }
 ];
 
+import { PaginationControls } from './PaginationControls';
+
 export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfile }) => {
   const [plants, setPlants] = useState<PowerPlant[]>([]);
   const [inspections, setInspections] = useState<InspectionResult[]>([]);
@@ -140,6 +142,9 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
   
   const [searchQuery, setSearchQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('ALL');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const [selectedPlant, setSelectedPlant] = useState<any | null>(null);
   const [plantInspections, setPlantInspections] = useState<InspectionResult[]>([]);
@@ -467,6 +472,11 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
     return matchesSearch && matchesRegion;
   });
 
+  const paginatedPlants = filteredPlants.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const ListView = () => (
     <div className="space-y-8 animate-fade-in">
        {/* Filter Bar */}
@@ -479,7 +489,10 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
                 type="text" 
                 placeholder="ค้นหาชื่อโรงไฟฟ้า, ID หรือ จังหวัด..." 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full bg-slate-50 dark:bg-white/5 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none transition-all placeholder:text-slate-400"
              />
           </div>
@@ -488,7 +501,10 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
              <div className="relative">
                 <select 
                    value={regionFilter}
-                   onChange={(e) => setRegionFilter(e.target.value)}
+                   onChange={(e) => {
+                     setRegionFilter(e.target.value);
+                     setCurrentPage(1);
+                   }}
                    className="pl-6 pr-8 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none outline-none focus:ring-2 focus:ring-[#74045F]/20"
                 >
                    <option value="ALL">ทุกภูมิภาค</option>
@@ -505,45 +521,55 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
 
        {/* Grid List */}
        {filteredPlants.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {filteredPlants.map((plant) => (
-                <div 
-                   key={plant.id}
-                   onClick={() => handleViewDetails(plant)}
-                   className="glass-panel group overflow-hidden bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-[2rem] hover:shadow-2xl transition-all duration-300 flex flex-col cursor-pointer"
-                >
-                   <div className="px-6 py-6 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                         <div className={`p-3 rounded-2xl bg-white dark:bg-[#030712] shadow-sm border border-slate-100 dark:border-white/5 text-[#74045F] dark:text-[#C7911B]`}>
-                            {plant.type.includes('Solar') ? <Zap size={20} /> : <Battery size={20} />}
+          <div className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedPlants.map((plant) => (
+                   <div 
+                      key={plant.id}
+                      onClick={() => handleViewDetails(plant)}
+                      className="glass-panel group overflow-hidden bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-[2rem] hover:shadow-2xl transition-all duration-300 flex flex-col cursor-pointer"
+                   >
+                      <div className="px-6 py-6 flex-1 flex flex-col">
+                         <div className="flex justify-between items-start mb-4">
+                            <div className={`p-3 rounded-2xl bg-white dark:bg-[#030712] shadow-sm border border-slate-100 dark:border-white/5 text-[#74045F] dark:text-[#C7911B]`}>
+                               {plant.type.includes('Solar') ? <Zap size={20} /> : <Battery size={20} />}
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] ${plant.userType === 'SPP' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                               {plant.userType}
+                            </span>
                          </div>
-                         <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] ${plant.userType === 'SPP' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {plant.userType}
-                         </span>
+                         
+                         <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-tight line-clamp-1 mb-2 group-hover:text-[#74045F] transition-colors italic">
+                            {plant.name}
+                         </h3>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 italic">{plant.province} • {plant.region}</p>
+      
+                         <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 mb-6">
+                            <div className="space-y-0.5">
+                               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">กำลังผลิต</div>
+                               <div className="text-sm font-black text-slate-800 dark:text-white italic">{plant.capacity} MW</div>
+                            </div>
+                            <div className="space-y-0.5 text-right">
+                               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">สถานะล่าสุด</div>
+                               <div className="text-xs font-black text-emerald-500 italic uppercase">Active</div>
+                            </div>
+                         </div>
+      
+                         <button className="mt-auto w-full flex items-center justify-center gap-2 py-3 bg-[#74045F]/5 text-[#74045F] dark:text-[#C7911B] dark:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-[#74045F] group-hover:text-white transition-all italic">
+                            ตรวจสอบประวัติย้อนหลัง <ChevronRight size={14} />
+                         </button>
                       </div>
-                      
-                      <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-tight line-clamp-1 mb-2 group-hover:text-[#74045F] transition-colors italic">
-                         {plant.name}
-                      </h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 italic">{plant.province} • {plant.region}</p>
-   
-                      <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 mb-6">
-                         <div className="space-y-0.5">
-                            <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">กำลังผลิต</div>
-                            <div className="text-sm font-black text-slate-800 dark:text-white italic">{plant.capacity} MW</div>
-                         </div>
-                         <div className="space-y-0.5 text-right">
-                            <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">สถานะล่าสุด</div>
-                            <div className="text-xs font-black text-emerald-500 italic uppercase">Active</div>
-                         </div>
-                      </div>
-   
-                      <button className="mt-auto w-full flex items-center justify-center gap-2 py-3 bg-[#74045F]/5 text-[#74045F] dark:text-[#C7911B] dark:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-[#74045F] group-hover:text-white transition-all italic">
-                         ตรวจสอบประวัติย้อนหลัง <ChevronRight size={14} />
-                      </button>
                    </div>
-                </div>
-             ))}
+                ))}
+             </div>
+             <PaginationControls
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+               totalItems={filteredPlants.length}
+               itemsPerPage={itemsPerPage}
+               onItemsPerPageChange={setItemsPerPage}
+               pageSizeOptions={[5, 10, 20, 50, 100]}
+             />
           </div>
        ) : (
           <div className="glass-panel py-24 text-center rounded-[3rem] border border-dashed border-slate-200 dark:border-white/10 opacity-70">

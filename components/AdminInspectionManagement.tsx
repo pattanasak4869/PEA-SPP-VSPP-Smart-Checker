@@ -13,6 +13,7 @@ import { InspectionRequest, InspectionResult } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../src/lib/firebase';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 
 interface AdminInspectionManagementProps {
   isDangerZoneUnlocked: boolean;
@@ -263,6 +264,9 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const filteredRequests = requests.filter(req => {
     const matchesSearch = 
       req.plantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -272,6 +276,11 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
     return matchesSearch && matchesStatus;
   });
 
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const filteredInspections = inspections.filter(ins => {
     const matchesSearch = 
       ins.plantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -280,6 +289,11 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
     const matchesStatus = statusFilter === 'ALL' || ins.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const paginatedInspections = filteredInspections.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const stats = {
     totalRequests: requests.length,
@@ -349,7 +363,7 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
       {/* Navigation Tabs */}
       <div className="flex p-1.5 bg-white dark:bg-[#030712] rounded-[1.5rem] border border-slate-100 dark:border-white/5 shadow-sm w-fit">
         <button
-          onClick={() => setActiveTab('DASHBOARD')}
+          onClick={() => { setActiveTab('DASHBOARD'); setCurrentPage(1); }}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
             activeTab === 'DASHBOARD' 
               ? 'bg-[#74045F]/10 text-[#74045F] dark:bg-[#C7911B]/10 dark:text-[#C7911B]' 
@@ -360,7 +374,7 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
           {t('nav.dashboard')}
         </button>
         <button
-          onClick={() => setActiveTab('REQUESTS')}
+          onClick={() => { setActiveTab('REQUESTS'); setCurrentPage(1); }}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
             activeTab === 'REQUESTS' 
               ? 'bg-[#74045F]/10 text-[#74045F] dark:bg-[#C7911B]/10 dark:text-[#C7911B]' 
@@ -371,7 +385,7 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
           คำร้องขอ ({requests.length})
         </button>
         <button
-          onClick={() => setActiveTab('RESULTS')}
+          onClick={() => { setActiveTab('RESULTS'); setCurrentPage(1); }}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
             activeTab === 'RESULTS' 
               ? 'bg-[#74045F]/10 text-[#74045F] dark:bg-[#C7911B]/10 dark:text-[#C7911B]' 
@@ -529,13 +543,19 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
                 type="text"
                 placeholder={t('admin.search')}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl text-sm focus:ring-2 focus:ring-[#74045F]/20 outline-none transition-all dark:text-white font-medium"
               />
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="px-6 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl text-xs outline-none transition-all dark:text-white font-black uppercase tracking-widest"
             >
               <option value="ALL">สถานะทั้งหมด</option>
@@ -571,8 +591,8 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-white/5">
                 {activeTab === 'REQUESTS' ? (
-                  filteredRequests.length > 0 ? (
-                    filteredRequests.map(req => (
+                  paginatedRequests.length > 0 ? (
+                    paginatedRequests.map(req => (
                       <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group">
                         <td className="py-5 pl-4">
                           <div className="flex flex-col gap-1.5">
@@ -645,8 +665,8 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
                     </tr>
                   )
                 ) : (
-                  filteredInspections.length > 0 ? (
-                    filteredInspections.map(ins => (
+                  paginatedInspections.length > 0 ? (
+                    paginatedInspections.map(ins => (
                       <tr key={ins.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group">
                         <td className="py-5 pl-4">
                           <div className="flex flex-col gap-1.5">
@@ -715,6 +735,15 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
               </tbody>
             </table>
           </div>
+
+          <PaginationControls
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            totalItems={activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            pageSizeOptions={[5, 10, 20, 50]}
+          />
         </div>
       )}
 

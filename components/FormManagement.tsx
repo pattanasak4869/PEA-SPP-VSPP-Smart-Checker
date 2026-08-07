@@ -12,6 +12,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { db } from '../src/lib/firebase';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 
 export type FieldType = 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea' | 'image' | 'file' | 'gps';
 
@@ -289,9 +290,17 @@ export const FormManagement: React.FC<{
     setIsModalOpen(false);
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const filteredForms = forms.filter(f => 
     f.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     f.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const paginatedForms = filteredForms.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const getStatusColor = (status: FormStatus) => {
@@ -399,7 +408,10 @@ export const FormManagement: React.FC<{
             type="text" 
             placeholder={t('admin.search')}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full bg-white dark:bg-[#030712] border-2 border-slate-100 dark:border-white/5 rounded-2xl pl-12 pr-6 py-3.5 focus:outline-none focus:border-[#74045F]/30 dark:focus:border-[#C7911B]/30 transition-all font-medium"
           />
         </div>
@@ -425,10 +437,10 @@ export const FormManagement: React.FC<{
       </div>
 
       {/* Forms Content */}
-      <div className="pb-24">
+      <div className="pb-24 space-y-6">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {filteredForms.map((form) => (
+            {paginatedForms.map((form) => (
               <motion.div 
                 key={form.id}
                 layout
@@ -519,7 +531,7 @@ export const FormManagement: React.FC<{
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-medium">
-                  {filteredForms.map((form) => (
+                  {paginatedForms.map((form) => (
                     <motion.tr 
                       key={form.id} 
                       layout
@@ -601,6 +613,15 @@ export const FormManagement: React.FC<{
             </div>
           </div>
         )}
+
+        <PaginationControls
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          totalItems={filteredForms.length}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={setItemsPerPage}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+        />
 
         {filteredForms.length === 0 && (
           <div className="py-20 text-center glass-panel rounded-3xl mt-4">

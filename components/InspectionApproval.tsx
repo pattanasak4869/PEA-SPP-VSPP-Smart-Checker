@@ -15,6 +15,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { SignatureModal } from './SignatureModal';
 import { db } from '../src/lib/firebase';
 import { collection, query, onSnapshot } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 
 interface InspectionApprovalProps {
   userProfile: any;
@@ -267,19 +268,25 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
   };
 
   const ListView = () => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const displayList = activeTab === 'PENDING' ? inspections : historyInspections;
+    const paginatedDisplayList = displayList.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
 
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[2rem] w-full max-w-md mx-auto mb-10 shadow-inner">
            <button 
-              onClick={() => setActiveTab('PENDING')}
+              onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
               className={`flex-1 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${activeTab === 'PENDING' ? 'bg-white dark:bg-white/10 shadow-xl text-[#74045F] dark:text-[#C7911B]' : 'text-slate-400 hover:text-slate-600'}`}
            >
               <Clock size={16} /> รออนุมัติ ({inspections.length})
            </button>
            <button 
-              onClick={() => setActiveTab('HISTORY')}
+              onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
               className={`flex-1 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${activeTab === 'HISTORY' ? 'bg-white dark:bg-white/10 shadow-xl text-[#74045F] dark:text-[#C7911B]' : 'text-slate-400 hover:text-slate-600'}`}
            >
               <History size={16} /> ประวัติ ({historyInspections.length})
@@ -287,45 +294,56 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
         </div>
 
         {displayList.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {displayList.map(ins => (
-                <div key={ins.id} className="glass-panel p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex flex-col justify-between hover:translate-y-[-4px] transition-all group shadow-xl shadow-slate-200/20 dark:shadow-none bg-white dark:bg-[#030712]">
-                   <div>
-                      <div className="flex justify-between items-start mb-4">
-                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ins.id}</span>
-                         <div className={`px-3 py-1 ${
-                           ins.status === 'SUBMITTED' ? 'bg-amber-500/10 text-amber-500' : 
-                           ins.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
-                         } text-[8px] font-black rounded-full uppercase tracking-widest flex items-center gap-1.5`}>
-                            {ins.status === 'SUBMITTED' ? <Clock size={10} /> : ins.status === 'APPROVED' ? <CheckCircle2 size={10} /> : <XCircle size={10} />} 
-                            {ins.status}
-                         </div>
-                      </div>
-                      <h3 className="text-lg font-black text-slate-800 dark:text-white italic leading-tight mb-2 group-hover:text-[#74045F] transition-colors">{ins.plantName}</h3>
-                      <div className="flex items-center gap-2 mb-4">
-                         <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[10px] font-black">
-                            {ins.inspectorName[0]}
-                         </div>
-                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">By {ins.inspectorName}</span>
-                      </div>
-                      
-                      <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 mb-6">
-                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 italic">Submission Details</p>
-                         <p className="text-[10px] font-black text-slate-700 dark:text-white italic">
-                            {new Date(ins.submittedAt || ins.createdAt).toLocaleString('th-TH')}
-                         </p>
-                      </div>
-                   </div>
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {paginatedDisplayList.map(ins => (
+                  <div key={ins.id} className="glass-panel p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex flex-col justify-between hover:translate-y-[-4px] transition-all group shadow-xl shadow-slate-200/20 dark:shadow-none bg-white dark:bg-[#030712]">
+                     <div>
+                        <div className="flex justify-between items-start mb-4">
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ins.id}</span>
+                           <div className={`px-3 py-1 ${
+                             ins.status === 'SUBMITTED' ? 'bg-amber-500/10 text-amber-500' : 
+                             ins.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
+                           } text-[8px] font-black rounded-full uppercase tracking-widest flex items-center gap-1.5`}>
+                              {ins.status === 'SUBMITTED' ? <Clock size={10} /> : ins.status === 'APPROVED' ? <CheckCircle2 size={10} /> : <XCircle size={10} />} 
+                              {ins.status}
+                           </div>
+                        </div>
+                        <h3 className="text-lg font-black text-slate-800 dark:text-white italic leading-tight mb-2 group-hover:text-[#74045F] transition-colors">{ins.plantName}</h3>
+                        <div className="flex items-center gap-2 mb-4">
+                           <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[10px] font-black">
+                              {ins.inspectorName[0]}
+                           </div>
+                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">By {ins.inspectorName}</span>
+                        </div>
+                        
+                        <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 mb-6">
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 italic">Submission Details</p>
+                           <p className="text-[10px] font-black text-slate-700 dark:text-white italic">
+                              {new Date(ins.submittedAt || ins.createdAt).toLocaleString('th-TH')}
+                           </p>
+                        </div>
+                     </div>
 
-                   <button 
-                      onClick={() => { setSelectedInspection(ins); setView('DETAIL'); }}
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-[#74045F]/5 dark:bg-white/5 text-[#74045F] dark:text-[#C7911B] rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-[#74045F] hover:text-white transition-all transition-duration-300"
-                   >
-                      ตรวจสอบรายละเอียด <ChevronRight size={14} />
-                   </button>
-                </div>
-             ))}
-          </div>
+                     <button 
+                        onClick={() => { setSelectedInspection(ins); setView('DETAIL'); }}
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#74045F]/5 dark:bg-white/5 text-[#74045F] dark:text-[#C7911B] rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-[#74045F] hover:text-white transition-all transition-duration-300"
+                     >
+                        ตรวจสอบรายละเอียด <ChevronRight size={14} />
+                     </button>
+                  </div>
+               ))}
+            </div>
+
+            <PaginationControls
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              totalItems={displayList.length}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
+          </>
         ) : (
           <div className="glass-panel py-32 rounded-[3.5rem] text-center border-dashed border-2 border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/5">
              <ShieldCheck size={64} className="mx-auto text-slate-200 dark:text-white/10 mb-6" />

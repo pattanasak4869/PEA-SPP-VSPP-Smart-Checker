@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { db } from '../src/lib/firebase';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -510,6 +511,9 @@ export const PowerPlantManagement: React.FC<{
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const filteredPlants = plants.filter(p => {
     const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (p.province || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -517,6 +521,11 @@ export const PowerPlantManagement: React.FC<{
     const matchesType = typeFilter === 'ALL' || p.type === typeFilter;
     return matchesSearch && matchesRegion && matchesType;
   });
+
+  const paginatedPlants = filteredPlants.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const totalCapacity = filteredPlants.reduce((sum, p) => sum + p.capacity, 0);
 
@@ -606,7 +615,10 @@ export const PowerPlantManagement: React.FC<{
             type="text" 
             placeholder={t('admin.search')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full bg-slate-50 dark:bg-white/5 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none transition-all placeholder:text-slate-400"
           />
         </div>
@@ -618,7 +630,10 @@ export const PowerPlantManagement: React.FC<{
             </div>
             <select 
               value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
+              onChange={(e) => {
+                setRegionFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-11 pr-8 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none outline-none focus:ring-2 focus:ring-[#74045F]/20"
             >
               <option value="ALL">ทุกภูมิภาค</option>
@@ -632,7 +647,10 @@ export const PowerPlantManagement: React.FC<{
             </div>
             <select 
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-11 pr-8 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none outline-none focus:ring-2 focus:ring-[#74045F]/20"
             >
               <option value="ALL">ทุกประเภทพลังงาน</option>
@@ -645,7 +663,7 @@ export const PowerPlantManagement: React.FC<{
       {/* Grid List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="popLayout">
-          {filteredPlants.map((plant) => (
+          {paginatedPlants.map((plant) => (
             <motion.div 
               key={plant.id}
               layout
@@ -761,6 +779,15 @@ export const PowerPlantManagement: React.FC<{
           ))}
         </AnimatePresence>
       </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        totalItems={filteredPlants.length}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={setItemsPerPage}
+        pageSizeOptions={[5, 10, 20, 50, 100]}
+      />
 
       {/* Empty State */}
       {filteredPlants.length === 0 && (

@@ -13,6 +13,7 @@ import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorag
 import { MOCK_USERS } from '../constants';
 import { db } from '../src/lib/firebase';
 import { doc, setDoc, deleteDoc, collection, query, onSnapshot } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 
 export interface Complaint {
   id: string;
@@ -86,10 +87,10 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState<Complaint | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const itemsPerPage = 8;
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -349,7 +350,10 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
                 type="text"
                 placeholder={t('admin.search')}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full bg-slate-100 dark:bg-white/5 border-none focus:ring-2 focus:ring-indigo-500/20 py-3.5 pl-12 pr-4 rounded-xl text-sm transition-all"
               />
             </div>
@@ -358,7 +362,10 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
               {['ALL', 'PENDING', 'INVESTIGATING', 'RESOLVED', 'CLOSED'].map((status) => (
                 <button
                   key={status}
-                  onClick={() => setStatusFilter(status)}
+                  onClick={() => {
+                    setStatusFilter(status);
+                    setCurrentPage(1);
+                  }}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                     statusFilter === status 
                     ? 'bg-[#74045F] dark:bg-[#C7911B] text-white shadow-lg shadow-indigo-500/20' 
@@ -477,6 +484,15 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
               </div>
             )}
           </div>
+
+          <PaginationControls
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            totalItems={filteredComplaints.length}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            pageSizeOptions={[5, 10, 20, 50]}
+          />
         </div>
 
         {/* Right Column: Details */}

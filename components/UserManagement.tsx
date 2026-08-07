@@ -13,6 +13,7 @@ import { MOCK_USERS } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, auth } from '../src/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { PaginationControls } from './PaginationControls';
 
 interface AppUser {
   employeeId: string;
@@ -283,10 +284,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.employeeId.includes(searchQuery) ||
     u.position.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -401,7 +410,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         type="text" 
                         placeholder={t('admin.search')}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setCurrentPage(1);
+                        }}
                         className="w-full bg-slate-100 dark:bg-black/30 border border-transparent focus:border-[#74045F]/50 dark:focus:border-[#C7911B]/50 py-2.5 pl-12 pr-4 rounded-xl text-sm transition-all"
                     />
                 </div>
@@ -424,7 +436,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-white/5">
-                    {filteredUsers.map((user) => (
+                    {paginatedUsers.map((user) => (
                         <tr key={user.employeeId} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-4">
@@ -499,6 +511,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 </tbody>
             </table>
         </div>
+        <PaginationControls
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={setItemsPerPage}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+        />
       </div>
 
       {/* Delete Confirmation Modal */}

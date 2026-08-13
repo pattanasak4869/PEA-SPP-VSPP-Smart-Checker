@@ -36,12 +36,14 @@ interface UserManagementProps {
   isDangerZoneUnlocked: boolean;
   setIsDangerZoneUnlocked: (unlocked: boolean) => void;
   setIsUnlockModalOpen: (open: boolean) => void;
+  userProfile?: any;
 }
 
 export const UserManagement: React.FC<UserManagementProps> = ({ 
   isDangerZoneUnlocked, 
   setIsDangerZoneUnlocked,
-  setIsUnlockModalOpen
+  setIsUnlockModalOpen,
+  userProfile
 }) => {
   const { t } = useLanguage();
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -57,6 +59,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Batch selection and deletion states
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [batchDeleteType, setBatchDeleteType] = useState<'SELECTED' | 'ALL' | null>(null);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+
+  const activeUser = userProfile || currentUser || safeParseLocalStorage<any>('user_profile', null);
+  const isAdmin = activeUser?.role === 'ADMIN';
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,6 +174,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const handleDeleteUser = (employeeId: string) => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
     if (!isDangerZoneUnlocked) {
       showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
       return;
@@ -171,7 +185,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     const user = users.find(u => u.employeeId === employeeId);
     if (!user) return;
 
-    if (currentUser && currentUser.employeeId === employeeId) {
+    if (activeUser && (activeUser.employeeId === employeeId || activeUser.username === employeeId)) {
         showToast('คุณไม่สามารถลบผู้ใช้งานที่กำลังล็อกอินอยู่ได้', 'error');
         return;
     }
@@ -181,10 +195,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const confirmDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
     if (userToDelete) {
       try {
         setIsSyncing(true);
         await deleteDoc(doc(db, 'users', userToDelete.employeeId));
+        setSelectedEmployeeIds(prev => prev.filter(id => id !== userToDelete.employeeId));
         setIsDeleteModalOpen(false);
         setUserToDelete(null);
         showToast(t('users.deleted'));
@@ -194,6 +213,88 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       } finally {
         setIsSyncing(false);
       }
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedEmployeeIds.length === filteredUsers.length && filteredUsers.length > 0) {
+      setSelectedEmployeeIds([]);
+    } else {
+      setSelectedEmployeeIds(filteredUsers.map(u => u.employeeId));
+    }
+  };
+
+  const handleToggleSelectOne = (employeeId: string) => {
+    setSelectedEmployeeIds(prev => 
+      prev.includes(employeeId) ? prev.filter(id => id !== employeeId) : [...prev, employeeId]
+    );
+  };
+
+  const handleOpenBatchDeleteModal = (type: 'SELECTED' | 'ALL') => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
+    if (!isDangerZoneUnlocked) {
+      showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
+      return;
+    }
+    if (type === 'SELECTED' && selectedEmployeeIds.length === 0) {
+      showToast('กรุณาเลือกรายการผู้ใช้งานที่ต้องการลบอย่างน้อย 1 รายการ', 'error');
+      return;
+    }
+    if (type === 'ALL' && filteredUsers.length === 0) {
+      showToast('ไม่พบผู้ใช้งานที่ต้องการลบ', 'error');
+      return;
+    }
+    setBatchDeleteType(type);
+    setIsBatchDeleteModalOpen(true);
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+    if (!isDangerZoneUnlocked) {
+      showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    let usersToDelete: AppUser[] = [];
+    if (batchDeleteType === 'SELECTED') {
+      usersToDelete = users.filter(u => selectedEmployeeIds.includes(u.employeeId));
+    } else if (batchDeleteType === 'ALL') {
+      usersToDelete = [...filteredUsers];
+    }
+
+    // Protect current user from deleting themselves
+    const currentEmpId = activeUser?.employeeId || activeUser?.username;
+    usersToDelete = usersToDelete.filter(u => u.employeeId !== currentEmpId && u.username !== currentEmpId);
+
+    if (usersToDelete.length === 0) {
+      showToast('ไม่สามารถลบบัญชีผู้ใช้งานที่เลือกได้ (จำกัดไม่ให้ลบบัญชีของตนเอง)', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      const idsToRemove = new Set(usersToDelete.map(u => u.employeeId));
+      for (const u of usersToDelete) {
+        await deleteDoc(doc(db, 'users', u.employeeId));
+      }
+      setSelectedEmployeeIds(prev => prev.filter(id => !idsToRemove.has(id)));
+      showToast(`ลบข้อมูลผู้ใช้งานสำเร็จจำนวน ${usersToDelete.length} รายการ`);
+    } catch (error) {
+      console.error("Batch delete users error:", error);
+      showToast("เกิดข้อผิดพลาดในการลบข้อมูลจาก Database", "error");
+    } finally {
+      setIsSyncing(false);
+      setIsBatchDeleteModalOpen(false);
+      setBatchDeleteType(null);
     }
   };
 
@@ -400,6 +501,68 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         </div>
       </div>
 
+      {/* Batch Selection & Deletion Toolbar */}
+      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+          >
+            <input 
+              type="checkbox"
+              checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
+              onChange={() => {}}
+              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+            />
+            <span>{selectedEmployeeIds.length === filteredUsers.length && filteredUsers.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+          </button>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedEmployeeIds.length}</span> จาก <span className="font-bold">{filteredUsers.length}</span> คน
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                disabled={selectedEmployeeIds.length === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  selectedEmployeeIds.length > 0
+                    ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                }`}
+                title="ลบเฉพาะผู้ใช้งานที่เลือก"
+              >
+                <Trash2 size={15} />
+                ลบเฉพาะที่เลือก ({selectedEmployeeIds.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenBatchDeleteModal('ALL')}
+                disabled={filteredUsers.length === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  filteredUsers.length > 0
+                    ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                }`}
+                title="ลบผู้ใช้งานทั้งหมดตามตัวกรอง"
+              >
+                <Trash2 size={15} />
+                ลบทั้งหมด ({filteredUsers.length})
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
+              <Lock size={14} />
+              <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Users Table / List */}
       <div className="glass-panel rounded-2xl border border-gray-200 dark:border-white/5 overflow-hidden">
         <div className="p-6 border-b border-gray-200 dark:border-white/5 bg-white/50 dark:bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -428,6 +591,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        <th className="px-4 py-4 text-center w-12">
+                          <input 
+                            type="checkbox"
+                            checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
+                            onChange={handleToggleSelectAll}
+                            className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                            title="เลือกทั้งหมด"
+                          />
+                        </th>
                         <th className="px-6 py-4">ผู้ใช้งาน</th>
                         <th className="px-6 py-4">ตำแหน่ง / สิทธิ์</th>
                         <th className="px-6 py-4">ติดต่อ</th>
@@ -437,7 +609,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-white/5">
                     {paginatedUsers.map((user) => (
-                        <tr key={user.employeeId} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                        <tr key={user.employeeId} className={`hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group ${selectedEmployeeIds.includes(user.employeeId) ? 'bg-[#74045F]/[0.03] dark:bg-[#C7911B]/[0.05]' : ''}`}>
+                            <td className="px-4 py-4 text-center">
+                              <input 
+                                type="checkbox"
+                                checked={selectedEmployeeIds.includes(user.employeeId)}
+                                onChange={() => handleToggleSelectOne(user.employeeId)}
+                                className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                              />
+                            </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-white/10">
@@ -902,6 +1082,55 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     </form>
                 </motion.div>
             </div>
+        )}
+      </AnimatePresence>
+
+      {/* Batch Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isBatchDeleteModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBatchDeleteModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="glass-panel w-full max-w-md bg-white dark:bg-[#030712] rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 p-8 text-center border-t-4 border-rose-500"
+            >
+              <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">
+                {batchDeleteType === 'SELECTED' ? 'ยืนยันการลบผู้ใช้งานเฉพาะที่เลือก?' : 'ยืนยันการลบผู้ใช้งานทั้งหมด?'}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                {batchDeleteType === 'SELECTED' ? (
+                  <>คุณกำลังจะลบบัญชีผู้ใช้งานที่เลือกจำนวน <span className="font-black text-rose-500">{selectedEmployeeIds.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                ) : (
+                  <>คุณกำลังจะลบบัญชีผู้ใช้งานทั้งหมดตามตัวกรองจำนวน <span className="font-black text-rose-500">{filteredUsers.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                )}
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsBatchDeleteModalOpen(false)}
+                  className="flex-1 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-200 transition-all text-xs uppercase tracking-wider"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleConfirmBatchDelete}
+                  className="flex-1 bg-rose-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 active:scale-95 transition-all text-xs uppercase tracking-wider"
+                >
+                  ยืนยันการลบ
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

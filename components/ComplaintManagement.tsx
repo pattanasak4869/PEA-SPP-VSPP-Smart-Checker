@@ -72,12 +72,14 @@ interface ComplaintManagementProps {
   isDangerZoneUnlocked: boolean;
   setIsDangerZoneUnlocked: (val: boolean) => void;
   setIsUnlockModalOpen: (val: boolean) => void;
+  userProfile?: any;
 }
 
 export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({ 
   isDangerZoneUnlocked, 
   setIsDangerZoneUnlocked, 
-  setIsUnlockModalOpen 
+  setIsUnlockModalOpen,
+  userProfile
 }) => {
   const { t } = useLanguage();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -91,6 +93,14 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState<Complaint | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Batch selection & deletion states
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchDeleteType, setBatchDeleteType] = useState<'SELECTED' | 'ALL' | null>(null);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+
+  const currentUser = userProfile || safeParseLocalStorage<any>('user_profile', null);
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -181,6 +191,10 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
   };
 
   const handleDeleteComplaint = (id: string) => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
     if (!isDangerZoneUnlocked) {
       showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
       return;
@@ -193,6 +207,14 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
   };
 
   const confirmDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
+    if (!isDangerZoneUnlocked) {
+      showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
+      return;
+    }
     if (complaintToDelete) {
       try {
         await deleteDoc(doc(db, 'complaints', complaintToDelete.id));
@@ -203,12 +225,7 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
       const updated = complaints.filter(c => c.id !== complaintToDelete.id);
       saveToStorage(updated);
       
-      // Handle pagination if page becomes empty
-      const newTotalPages = Math.ceil(updated.length / itemsPerPage);
-      if (currentPage > newTotalPages && newTotalPages > 0) {
-        setCurrentPage(newTotalPages);
-      }
-
+      setSelectedIds(prev => prev.filter(id => id !== complaintToDelete.id));
       if (selectedComplaint?.id === complaintToDelete.id) {
         setSelectedComplaint(null);
       }
@@ -217,6 +234,86 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
       setComplaintToDelete(null);
       showToast('ลบข้อร้องเรียนเรียบร้อยแล้ว');
     }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredComplaints.length && filteredComplaints.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredComplaints.map(c => c.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleOpenBatchDeleteModal = (type: 'SELECTED' | 'ALL') => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
+    if (!isDangerZoneUnlocked) {
+      showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
+      return;
+    }
+    if (type === 'SELECTED' && selectedIds.length === 0) {
+      showToast('กรุณาเลือกรายการที่ต้องการลบอย่างน้อย 1 รายการ', 'error');
+      return;
+    }
+    if (type === 'ALL' && filteredComplaints.length === 0) {
+      showToast('ไม่พบรายการที่ต้องการลบ', 'error');
+      return;
+    }
+    setBatchDeleteType(type);
+    setIsBatchDeleteModalOpen(true);
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+    if (!isDangerZoneUnlocked) {
+      showToast('กรุณาปลดล็อก Danger Zone ก่อนดำเนินการลบข้อมูล', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    let itemsToDelete: Complaint[] = [];
+    if (batchDeleteType === 'SELECTED') {
+      itemsToDelete = complaints.filter(c => selectedIds.includes(c.id));
+    } else if (batchDeleteType === 'ALL') {
+      itemsToDelete = [...filteredComplaints];
+    }
+
+    if (itemsToDelete.length === 0) {
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    const idsToRemove = new Set(itemsToDelete.map(c => c.id));
+    const updated = complaints.filter(c => !idsToRemove.has(c.id));
+    saveToStorage(updated);
+
+    try {
+      for (const item of itemsToDelete) {
+        await deleteDoc(doc(db, 'complaints', item.id));
+      }
+    } catch (err) {
+      console.error("Batch delete complaints error:", err);
+    }
+
+    showToast(`ลบข้อร้องเรียนเรียบร้อยแล้วจำนวน ${itemsToDelete.length} รายการ`, 'success');
+    setSelectedIds(prev => prev.filter(id => !idsToRemove.has(id)));
+    if (selectedComplaint && idsToRemove.has(selectedComplaint.id)) {
+      setSelectedComplaint(null);
+    }
+    setIsBatchDeleteModalOpen(false);
+    setBatchDeleteType(null);
   };
 
   const handleExportCSV = () => {
@@ -378,6 +475,68 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
             </div>
           </div>
 
+          {/* Batch Selection & Deletion Toolbar */}
+          <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+              >
+                <input 
+                  type="checkbox"
+                  checked={selectedIds.length > 0 && selectedIds.length === filteredComplaints.length}
+                  onChange={() => {}}
+                  className="w-3.5 h-3.5 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                />
+                <span>{selectedIds.length === filteredComplaints.length && filteredComplaints.length > 0 ? 'ยกเลิก' : 'เลือกทั้งหมด'}</span>
+              </button>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                เลือก <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> / <span className="font-bold">{filteredComplaints.length}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {isAdmin ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                    disabled={selectedIds.length === 0}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                      selectedIds.length > 0
+                        ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                    }`}
+                    title="ลบเฉพาะที่เลือก"
+                  >
+                    <Trash2 size={13} />
+                    ลบที่เลือก ({selectedIds.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBatchDeleteModal('ALL')}
+                    disabled={filteredComplaints.length === 0}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                      filteredComplaints.length > 0
+                        ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                    }`}
+                    title="ลบทั้งหมดตามตัวกรอง"
+                  >
+                    <Trash2 size={13} />
+                    ลบหมด ({filteredComplaints.length})
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-bold">
+                  <Lock size={12} />
+                  <span>สิทธิ์ Admin</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* List */}
           <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10">
             {currentComplaints.length > 0 ? (
@@ -401,21 +560,33 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
                   }`}
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <div className="flex flex-wrap gap-1">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        selectedComplaint?.id === complaint.id
-                        ? 'bg-white/20 text-white'
-                        : CATEGORIES[complaint.category].bg + ' ' + CATEGORIES[complaint.category].color
-                      }`}>
-                        {CATEGORIES[complaint.category].label}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        selectedComplaint?.id === complaint.id
-                        ? 'bg-white/20 text-white'
-                        : PRIORITIES[complaint.priority].bg + ' ' + PRIORITIES[complaint.priority].color
-                      }`}>
-                        {PRIORITIES[complaint.priority].label}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox"
+                        checked={selectedIds.includes(complaint.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelectOne(complaint.id);
+                        }}
+                        className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
+                        title="เลือกรายการนี้"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          selectedComplaint?.id === complaint.id
+                          ? 'bg-white/20 text-white'
+                          : CATEGORIES[complaint.category].bg + ' ' + CATEGORIES[complaint.category].color
+                        }`}>
+                          {CATEGORIES[complaint.category].label}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          selectedComplaint?.id === complaint.id
+                          ? 'bg-white/20 text-white'
+                          : PRIORITIES[complaint.priority].bg + ' ' + PRIORITIES[complaint.priority].color
+                        }`}>
+                          {PRIORITIES[complaint.priority].label}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -435,7 +606,7 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
                         {isDangerZoneUnlocked ? <Trash2 size={12} /> : <Lock size={10} />}
                       </button>
                       <span className={`text-[10px] font-black uppercase tracking-tighter ${
-                         selectedComplaint?.id === complaint.id ? 'text-white/80' : 'text-slate-400'
+                         selectedComplaint?.id === complaint.id ? 'text-white/60' : 'text-slate-400'
                        }`}>
                          {complaint.id}
                       </span>
@@ -743,6 +914,55 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
                   className="bg-rose-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-rose-500/20 active:scale-95 transition-all uppercase tracking-widest text-[10px]"
                 >
                   ยืนยันลบข้อมูล
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Batch Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isBatchDeleteModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBatchDeleteModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="glass-panel w-full max-w-md bg-white dark:bg-[#030712] rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 p-8 text-center border-t-4 border-rose-500"
+            >
+              <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">
+                {batchDeleteType === 'SELECTED' ? 'ยืนยันการลบข้อร้องเรียนเฉพาะที่เลือก?' : 'ยืนยันการลบข้อร้องเรียนทั้งหมด?'}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                {batchDeleteType === 'SELECTED' ? (
+                  <>คุณกำลังจะลบข้อร้องเรียนที่เลือกจำนวน <span className="font-black text-rose-500">{selectedIds.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                ) : (
+                  <>คุณกำลังจะลบข้อร้องเรียนทั้งหมดตามตัวกรองจำนวน <span className="font-black text-rose-500">{filteredComplaints.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                )}
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsBatchDeleteModalOpen(false)}
+                  className="flex-1 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-200 transition-all text-xs uppercase tracking-wider"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleConfirmBatchDelete}
+                  className="flex-1 bg-rose-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 active:scale-95 transition-all text-xs uppercase tracking-wider"
+                >
+                  ยืนยันการลบ
                 </button>
               </div>
             </motion.div>

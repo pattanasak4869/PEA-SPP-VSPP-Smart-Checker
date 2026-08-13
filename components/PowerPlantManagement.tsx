@@ -209,7 +209,8 @@ export const PowerPlantManagement: React.FC<{
   isDangerZoneUnlocked: boolean;
   setIsDangerZoneUnlocked: (val: boolean) => void;
   setIsUnlockModalOpen: (val: boolean) => void;
-}> = ({ isDangerZoneUnlocked, setIsDangerZoneUnlocked, setIsUnlockModalOpen }) => {
+  userProfile?: any;
+}> = ({ isDangerZoneUnlocked, setIsDangerZoneUnlocked, setIsUnlockModalOpen, userProfile }) => {
   const { t } = useLanguage();
   const [plants, setPlants] = useState<PowerPlant[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,6 +231,14 @@ export const PowerPlantManagement: React.FC<{
   const [viewingPlant, setViewingPlant] = useState<PowerPlant | null>(null);
   const [plantToDelete, setPlantToDelete] = useState<PowerPlant | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Batch selection and deletion states
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchDeleteType, setBatchDeleteType] = useState<'SELECTED' | 'ALL' | null>(null);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+
+  const currentUser = userProfile || safeParseLocalStorage<any>('user_profile', null);
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   // CSV Import States
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -492,6 +501,10 @@ export const PowerPlantManagement: React.FC<{
   };
 
   const handleDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
     if (plantToDelete) {
       const updatedPlants = plants.filter(p => p.id !== plantToDelete.id);
       setPlants(updatedPlants);
@@ -508,7 +521,79 @@ export const PowerPlantManagement: React.FC<{
       showToast('ลบข้อมูลโรงไฟฟ้าแล้ว', 'success');
       setIsDeleteModalOpen(false);
       setPlantToDelete(null);
+      setSelectedIds(prev => prev.filter(id => id !== plantToDelete.id));
     }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredPlants.length && filteredPlants.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredPlants.map(p => p.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleOpenBatchDeleteModal = (type: 'SELECTED' | 'ALL') => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      return;
+    }
+    if (type === 'SELECTED' && selectedIds.length === 0) {
+      showToast('กรุณาเลือกรายการที่ต้องการลบอย่างน้อย 1 รายการ', 'error');
+      return;
+    }
+    if (type === 'ALL' && filteredPlants.length === 0) {
+      showToast('ไม่พบรายการข้อมูลที่ต้องการลบ', 'error');
+      return;
+    }
+    setBatchDeleteType(type);
+    setIsBatchDeleteModalOpen(true);
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    if (!isAdmin) {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ลบข้อมูล', 'error');
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    let itemsToDelete: PowerPlant[] = [];
+    if (batchDeleteType === 'SELECTED') {
+      itemsToDelete = plants.filter(p => selectedIds.includes(p.id));
+    } else if (batchDeleteType === 'ALL') {
+      itemsToDelete = [...filteredPlants];
+    }
+
+    if (itemsToDelete.length === 0) {
+      setIsBatchDeleteModalOpen(false);
+      return;
+    }
+
+    const idsToRemove = new Set(itemsToDelete.map(p => p.id));
+    const updatedPlants = plants.filter(p => !idsToRemove.has(p.id));
+
+    setPlants(updatedPlants);
+    safeSetLocalStorage('power_plants', updatedPlants);
+
+    try {
+      const deletePromises = itemsToDelete.map(plant => 
+        deleteDoc(doc(db, 'powerPlants', plant.id))
+      );
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error("Firestore batch delete error:", err);
+    }
+
+    showToast(`ลบข้อมูลเรียบร้อยแล้วจำนวน ${itemsToDelete.length} รายการ`, 'success');
+    setSelectedIds(prev => prev.filter(id => !idsToRemove.has(id)));
+    setIsBatchDeleteModalOpen(false);
+    setBatchDeleteType(null);
   };
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -660,6 +745,68 @@ export const PowerPlantManagement: React.FC<{
         </div>
       </div>
 
+      {/* Batch Selection & Deletion Control Bar */}
+      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+          >
+            <input 
+              type="checkbox"
+              checked={selectedIds.length > 0 && selectedIds.length === filteredPlants.length}
+              onChange={() => {}}
+              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+            />
+            <span>{selectedIds.length === filteredPlants.length && filteredPlants.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+          </button>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> จาก <span className="font-bold">{filteredPlants.length}</span> รายการ
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                disabled={selectedIds.length === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  selectedIds.length > 0
+                    ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                }`}
+                title="ลบเฉพาะรายการที่เลือก"
+              >
+                <Trash2 size={15} />
+                ลบเฉพาะที่เลือก ({selectedIds.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenBatchDeleteModal('ALL')}
+                disabled={filteredPlants.length === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                  filteredPlants.length > 0
+                    ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                }`}
+                title="ลบรายการทั้งหมดที่ตรงกับตัวกรอง"
+              >
+                <Trash2 size={15} />
+                ลบทั้งหมด ({filteredPlants.length})
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
+              <Lock size={14} />
+              <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Grid List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="popLayout">
@@ -670,14 +817,30 @@ export const PowerPlantManagement: React.FC<{
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="glass-panel group overflow-hidden bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-[2rem] hover:shadow-2xl hover:shadow-[#74045F]/5 dark:hover:shadow-none transition-all duration-300 flex flex-col"
+              className={`glass-panel group overflow-hidden bg-white dark:bg-white/5 border rounded-[2rem] hover:shadow-2xl hover:shadow-[#74045F]/5 dark:hover:shadow-none transition-all duration-300 flex flex-col ${
+                selectedIds.includes(plant.id) 
+                  ? 'border-[#74045F] dark:border-[#C7911B] ring-2 ring-[#74045F]/20 dark:ring-[#C7911B]/20 bg-[#74045F]/[0.02]' 
+                  : 'border-slate-100 dark:border-white/5'
+              }`}
             >
               {/* Card Header Area */}
               <div className="px-6 pt-6 flex justify-between items-start">
-                <div className={`p-3 rounded-2xl bg-white dark:bg-[#030712] shadow-sm border border-slate-100 dark:border-white/5 text-[#74045F] dark:text-[#C7911B]`}>
-                  {plant.type.includes('Solar') ? <Zap size={24} /> : 
-                   plant.type.includes('Wind') ? <Radio size={24} /> : 
-                   <Battery size={24} />}
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox"
+                    checked={selectedIds.includes(plant.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleSelectOne(plant.id);
+                    }}
+                    className="w-5 h-5 rounded-md border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
+                    title="เลือกรายการนี้"
+                  />
+                  <div className={`p-3 rounded-2xl bg-white dark:bg-[#030712] shadow-sm border border-slate-100 dark:border-white/5 text-[#74045F] dark:text-[#C7911B]`}>
+                    {plant.type.includes('Solar') ? <Zap size={24} /> : 
+                     plant.type.includes('Wind') ? <Radio size={24} /> : 
+                     <Battery size={24} />}
+                  </div>
                 </div>
                 
                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity translate-y-1 group-hover:translate-y-0 duration-300">
@@ -1501,6 +1664,55 @@ export const PowerPlantManagement: React.FC<{
                     )}
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Batch Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isBatchDeleteModalOpen && (
+          <div className="fixed inset-0 xl:left-72 xl:top-[65px] z-[210] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBatchDeleteModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-[#030712] rounded-[3rem] shadow-2xl overflow-hidden p-10 z-10 text-center"
+            >
+              <div className="w-20 h-20 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight mb-3">
+                {batchDeleteType === 'SELECTED' ? 'ยืนยันการลบข้อมูลเฉพาะที่เลือก?' : 'ยืนยันการลบข้อมูลทั้งหมด?'}
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed text-sm">
+                {batchDeleteType === 'SELECTED' ? (
+                  <>คุณกำลังจะลบข้อมูลโรงไฟฟ้าที่เลือกจำนวน <span className="font-bold text-rose-500">{selectedIds.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                ) : (
+                  <>คุณกำลังจะลบข้อมูลโรงไฟฟ้าทั้งหมดตามตัวกรองจำนวน <span className="font-bold text-rose-500">{filteredPlants.length}</span> รายการ ข้อมูลในระบบและ Firebase จะถูกลบถาวร</>
+                )}
+              </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsBatchDeleteModalOpen(false)}
+                  className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 bg-slate-50 dark:bg-white/5 transition-all hover:bg-slate-100"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleConfirmBatchDelete}
+                  className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white bg-rose-500 shadow-xl shadow-rose-500/20 active:scale-95 transition-all hover:bg-rose-600"
+                >
+                  ยืนยันการลบ
+                </button>
               </div>
             </motion.div>
           </div>

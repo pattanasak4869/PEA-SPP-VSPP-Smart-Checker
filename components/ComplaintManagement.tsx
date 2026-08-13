@@ -476,66 +476,83 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
           </div>
 
           {/* Batch Selection & Deletion Toolbar */}
-          <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
+          {isDangerZoneUnlocked ? (
+            <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAll}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+                >
+                  <input 
+                    type="checkbox"
+                    checked={selectedIds.length > 0 && selectedIds.length === filteredComplaints.length}
+                    onChange={() => {}}
+                    className="w-3.5 h-3.5 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                  />
+                  <span>{selectedIds.length === filteredComplaints.length && filteredComplaints.length > 0 ? 'ยกเลิก' : 'เลือกทั้งหมด'}</span>
+                </button>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  เลือก <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> / <span className="font-bold">{filteredComplaints.length}</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {isAdmin ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                      disabled={selectedIds.length === 0}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                        selectedIds.length > 0
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                      title="ลบเฉพาะที่เลือก"
+                    >
+                      <Trash2 size={13} />
+                      ลบที่เลือก ({selectedIds.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBatchDeleteModal('ALL')}
+                      disabled={filteredComplaints.length === 0}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                        filteredComplaints.length > 0
+                          ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                      title="ลบทั้งหมดตามตัวกรอง"
+                    >
+                      <Trash2 size={13} />
+                      ลบหมด ({filteredComplaints.length})
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-bold">
+                    <Lock size={12} />
+                    <span>สิทธิ์ Admin</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-400">
+              <div className="flex items-center gap-2 font-bold text-[11px]">
+                <Lock size={14} className="text-amber-500 flex-shrink-0" />
+                <span>ฟังก์ชันเลือกและลบแบบกลุ่ม (Batch Delete) ต้องปลดล็อก Danger Zone</span>
+              </div>
               <button
                 type="button"
-                onClick={handleToggleSelectAll}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+                onClick={() => setIsUnlockModalOpen(true)}
+                className="px-2.5 py-1 bg-amber-500 text-white rounded-lg font-extrabold text-[10px] uppercase tracking-wider hover:bg-amber-600 transition-all shadow-sm flex items-center gap-1"
               >
-                <input 
-                  type="checkbox"
-                  checked={selectedIds.length > 0 && selectedIds.length === filteredComplaints.length}
-                  onChange={() => {}}
-                  className="w-3.5 h-3.5 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                />
-                <span>{selectedIds.length === filteredComplaints.length && filteredComplaints.length > 0 ? 'ยกเลิก' : 'เลือกทั้งหมด'}</span>
+                <Lock size={10} />
+                ปลดล็อก
               </button>
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                เลือก <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> / <span className="font-bold">{filteredComplaints.length}</span>
-              </span>
             </div>
-
-            <div className="flex items-center gap-1.5">
-              {isAdmin ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenBatchDeleteModal('SELECTED')}
-                    disabled={selectedIds.length === 0}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                      selectedIds.length > 0
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                    }`}
-                    title="ลบเฉพาะที่เลือก"
-                  >
-                    <Trash2 size={13} />
-                    ลบที่เลือก ({selectedIds.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenBatchDeleteModal('ALL')}
-                    disabled={filteredComplaints.length === 0}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                      filteredComplaints.length > 0
-                        ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                    }`}
-                    title="ลบทั้งหมดตามตัวกรอง"
-                  >
-                    <Trash2 size={13} />
-                    ลบหมด ({filteredComplaints.length})
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  <Lock size={12} />
-                  <span>สิทธิ์ Admin</span>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* List */}
           <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10">
@@ -561,16 +578,18 @@ export const ComplaintManagement: React.FC<ComplaintManagementProps> = ({
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox"
-                        checked={selectedIds.includes(complaint.id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleToggleSelectOne(complaint.id);
-                        }}
-                        className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
-                        title="เลือกรายการนี้"
-                      />
+                      {isDangerZoneUnlocked && (
+                        <input 
+                          type="checkbox"
+                          checked={selectedIds.includes(complaint.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelectOne(complaint.id);
+                          }}
+                          className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
+                          title="เลือกรายการนี้"
+                        />
+                      )}
                       <div className="flex flex-wrap gap-1">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                           selectedComplaint?.id === complaint.id

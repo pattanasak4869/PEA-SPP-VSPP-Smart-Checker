@@ -502,66 +502,83 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       </div>
 
       {/* Batch Selection & Deletion Toolbar */}
-      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      {isDangerZoneUnlocked ? (
+        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+            >
+              <input 
+                type="checkbox"
+                checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
+                onChange={() => {}}
+                className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+              />
+              <span>{selectedEmployeeIds.length === filteredUsers.length && filteredUsers.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+            </button>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedEmployeeIds.length}</span> จาก <span className="font-bold">{filteredUsers.length}</span> คน
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                  disabled={selectedEmployeeIds.length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                    selectedEmployeeIds.length > 0
+                      ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                  }`}
+                  title="ลบเฉพาะผู้ใช้งานที่เลือก"
+                >
+                  <Trash2 size={15} />
+                  ลบเฉพาะที่เลือก ({selectedEmployeeIds.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBatchDeleteModal('ALL')}
+                  disabled={filteredUsers.length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                    filteredUsers.length > 0
+                      ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                  }`}
+                  title="ลบผู้ใช้งานทั้งหมดตามตัวกรอง"
+                >
+                  <Trash2 size={15} />
+                  ลบทั้งหมด ({filteredUsers.length})
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
+                <Lock size={14} />
+                <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-500/5 border border-amber-500/20 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-400">
+          <div className="flex items-center gap-2.5 font-bold">
+            <Lock size={16} className="text-amber-500 flex-shrink-0" />
+            <span>ฟังก์ชันเลือกและลบข้อมูลแบบกลุ่ม (Batch Delete) ถูกจำกัดเฉพาะเมื่อปลดล็อก Danger Zone เท่านั้น</span>
+          </div>
           <button
             type="button"
-            onClick={handleToggleSelectAll}
-            className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+            onClick={() => setIsUnlockModalOpen(true)}
+            className="px-3.5 py-1.5 bg-amber-500 text-white rounded-xl font-extrabold text-[11px] uppercase tracking-wider hover:bg-amber-600 transition-all shadow-sm flex items-center gap-1.5"
           >
-            <input 
-              type="checkbox"
-              checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
-              onChange={() => {}}
-              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-            />
-            <span>{selectedEmployeeIds.length === filteredUsers.length && filteredUsers.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+            <Lock size={12} />
+            ปลดล็อก Danger Zone
           </button>
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedEmployeeIds.length}</span> จาก <span className="font-bold">{filteredUsers.length}</span> คน
-          </span>
         </div>
-
-        <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleOpenBatchDeleteModal('SELECTED')}
-                disabled={selectedEmployeeIds.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
-                  selectedEmployeeIds.length > 0
-                    ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                }`}
-                title="ลบเฉพาะผู้ใช้งานที่เลือก"
-              >
-                <Trash2 size={15} />
-                ลบเฉพาะที่เลือก ({selectedEmployeeIds.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenBatchDeleteModal('ALL')}
-                disabled={filteredUsers.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
-                  filteredUsers.length > 0
-                    ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                }`}
-                title="ลบผู้ใช้งานทั้งหมดตามตัวกรอง"
-              >
-                <Trash2 size={15} />
-                ลบทั้งหมด ({filteredUsers.length})
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
-              <Lock size={14} />
-              <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Users Table / List */}
       <div className="glass-panel rounded-2xl border border-gray-200 dark:border-white/5 overflow-hidden">
@@ -591,15 +608,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        <th className="px-4 py-4 text-center w-12">
-                          <input 
-                            type="checkbox"
-                            checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
-                            onChange={handleToggleSelectAll}
-                            className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                            title="เลือกทั้งหมด"
-                          />
-                        </th>
+                        {isDangerZoneUnlocked && (
+                          <th className="px-4 py-4 text-center w-12">
+                            <input 
+                              type="checkbox"
+                              checked={selectedEmployeeIds.length > 0 && selectedEmployeeIds.length === filteredUsers.length}
+                              onChange={handleToggleSelectAll}
+                              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                              title="เลือกทั้งหมด"
+                            />
+                          </th>
+                        )}
                         <th className="px-6 py-4">ผู้ใช้งาน</th>
                         <th className="px-6 py-4">ตำแหน่ง / สิทธิ์</th>
                         <th className="px-6 py-4">ติดต่อ</th>
@@ -610,14 +629,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 <tbody className="divide-y divide-gray-200 dark:divide-white/5">
                     {paginatedUsers.map((user) => (
                         <tr key={user.employeeId} className={`hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group ${selectedEmployeeIds.includes(user.employeeId) ? 'bg-[#74045F]/[0.03] dark:bg-[#C7911B]/[0.05]' : ''}`}>
-                            <td className="px-4 py-4 text-center">
-                              <input 
-                                type="checkbox"
-                                checked={selectedEmployeeIds.includes(user.employeeId)}
-                                onChange={() => handleToggleSelectOne(user.employeeId)}
-                                className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                              />
-                            </td>
+                            {isDangerZoneUnlocked && (
+                              <td className="px-4 py-4 text-center">
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedEmployeeIds.includes(user.employeeId)}
+                                  onChange={() => handleToggleSelectOne(user.employeeId)}
+                                  className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                                />
+                              </td>
+                            )}
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-white/10">

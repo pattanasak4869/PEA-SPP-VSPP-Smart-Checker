@@ -704,80 +704,99 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
           </div>
 
           {/* Batch Selection & Deletion Toolbar */}
-          <div className="mb-4 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
+          {isDangerZoneUnlocked ? (
+            <div className="mb-4 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleToggleSelectAll(activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+                >
+                  <input 
+                    type="checkbox"
+                    checked={selectedIds.length > 0 && selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length)}
+                    onChange={() => {}}
+                    className="w-3.5 h-3.5 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                  />
+                  <span>{selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) && selectedIds.length > 0 ? 'ยกเลิก' : 'เลือกทั้งหมด'}</span>
+                </button>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  เลือก <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> / <span className="font-bold">{activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length}</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {isAdmin ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBatchDeleteModal('SELECTED', activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
+                      disabled={selectedIds.length === 0}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                        selectedIds.length > 0
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                      title="ลบเฉพาะที่เลือก"
+                    >
+                      <Trash2 size={13} />
+                      ลบที่เลือก ({selectedIds.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBatchDeleteModal('ALL', activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
+                      disabled={(activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) === 0}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
+                        (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) > 0
+                          ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                      title="ลบทั้งหมดตามตัวกรอง"
+                    >
+                      <Trash2 size={13} />
+                      ลบหมด ({activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length})
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-bold">
+                    <Lock size={12} />
+                    <span>สิทธิ์ Admin</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 bg-amber-500/5 border border-amber-500/20 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-400">
+              <div className="flex items-center gap-2.5 font-bold">
+                <Lock size={16} className="text-amber-500 flex-shrink-0" />
+                <span>ฟังก์ชันเลือกและลบข้อมูลแบบกลุ่ม (Batch Delete) ถูกจำกัดเฉพาะเมื่อปลดล็อก Danger Zone เท่านั้น</span>
+              </div>
               <button
                 type="button"
-                onClick={() => handleToggleSelectAll(activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+                onClick={() => setIsUnlockModalOpen(true)}
+                className="px-3.5 py-1.5 bg-amber-500 text-white rounded-xl font-extrabold text-[11px] uppercase tracking-wider hover:bg-amber-600 transition-all shadow-sm flex items-center gap-1.5"
               >
-                <input 
-                  type="checkbox"
-                  checked={selectedIds.length > 0 && selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length)}
-                  onChange={() => {}}
-                  className="w-3.5 h-3.5 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                />
-                <span>{selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) && selectedIds.length > 0 ? 'ยกเลิก' : 'เลือกทั้งหมด'}</span>
+                <Lock size={12} />
+                ปลดล็อก Danger Zone
               </button>
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                เลือก <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedIds.length}</span> / <span className="font-bold">{activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length}</span>
-              </span>
             </div>
-
-            <div className="flex items-center gap-1.5">
-              {isAdmin ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenBatchDeleteModal('SELECTED', activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
-                    disabled={selectedIds.length === 0}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                      selectedIds.length > 0
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                    }`}
-                    title="ลบเฉพาะที่เลือก"
-                  >
-                    <Trash2 size={13} />
-                    ลบที่เลือก ({selectedIds.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenBatchDeleteModal('ALL', activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
-                    disabled={(activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) === 0}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                      (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length) > 0
-                        ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                    }`}
-                    title="ลบทั้งหมดตามตัวกรอง"
-                  >
-                    <Trash2 size={13} />
-                    ลบหมด ({activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length})
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  <Lock size={12} />
-                  <span>สิทธิ์ Admin</span>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/5">
-                  <th className="pb-4 pl-4 w-10">
-                    <input 
-                      type="checkbox"
-                      checked={selectedIds.length > 0 && selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length)}
-                      onChange={() => handleToggleSelectAll(activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
-                      className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                      title="เลือกทั้งหมด"
-                    />
-                  </th>
+                  {isDangerZoneUnlocked && (
+                    <th className="pb-4 pl-4 w-10">
+                      <input 
+                        type="checkbox"
+                        checked={selectedIds.length > 0 && selectedIds.length === (activeTab === 'REQUESTS' ? filteredRequests.length : filteredInspections.length)}
+                        onChange={() => handleToggleSelectAll(activeTab === 'REQUESTS' ? filteredRequests : filteredInspections)}
+                        className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                        title="เลือกทั้งหมด"
+                      />
+                    </th>
+                  )}
                   <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('admin.id_status')}</th>
                   <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">ชื่อโรงไฟฟ้า</th>
                   <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{activeTab === 'REQUESTS' ? 'ผู้รับงาน' : 'ผู้ตรวจสอบ'}</th>
@@ -790,15 +809,17 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
                   paginatedRequests.length > 0 ? (
                     paginatedRequests.map(req => (
                       <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group">
-                        <td className="py-5 pl-4 w-10">
-                          <input 
-                            type="checkbox"
-                            checked={selectedIds.includes(req.id)}
-                            onChange={() => handleToggleSelectOne(req.id)}
-                            className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                            title="เลือกรายการนี้"
-                          />
-                        </td>
+                        {isDangerZoneUnlocked && (
+                          <td className="py-5 pl-4 w-10">
+                            <input 
+                              type="checkbox"
+                              checked={selectedIds.includes(req.id)}
+                              onChange={() => handleToggleSelectOne(req.id)}
+                              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                              title="เลือกรายการนี้"
+                            />
+                          </td>
+                        )}
                         <td className="py-5">
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{req.id}</span>
@@ -873,7 +894,18 @@ export const AdminInspectionManagement: React.FC<AdminInspectionManagementProps>
                   paginatedInspections.length > 0 ? (
                     paginatedInspections.map(ins => (
                       <tr key={ins.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group">
-                        <td className="py-5 pl-4">
+                        {isDangerZoneUnlocked && (
+                          <td className="py-5 pl-4 w-10">
+                            <input 
+                              type="checkbox"
+                              checked={selectedIds.includes(ins.id)}
+                              onChange={() => handleToggleSelectOne(ins.id)}
+                              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                              title="เลือกรายการนี้"
+                            />
+                          </td>
+                        )}
+                        <td className="py-5">
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{ins.id}</span>
                             <span className={`w-fit px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusStyle(ins.status)}`}>

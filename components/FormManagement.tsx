@@ -542,66 +542,83 @@ export const FormManagement: React.FC<{
       </div>
 
       {/* Batch Selection & Deletion Toolbar */}
-      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      {isDangerZoneUnlocked ? (
+        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+            >
+              <input 
+                type="checkbox"
+                checked={selectedFormIds.length > 0 && selectedFormIds.length === filteredForms.length}
+                onChange={() => {}}
+                className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+              />
+              <span>{selectedFormIds.length === filteredForms.length && filteredForms.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+            </button>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedFormIds.length}</span> จาก <span className="font-bold">{filteredForms.length}</span> แบบฟอร์ม
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBatchDeleteModal('SELECTED')}
+                  disabled={selectedFormIds.length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                    selectedFormIds.length > 0
+                      ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                  }`}
+                  title="ลบเฉพาะแบบฟอร์มที่เลือก"
+                >
+                  <Trash2 size={15} />
+                  ลบเฉพาะที่เลือก ({selectedFormIds.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBatchDeleteModal('ALL')}
+                  disabled={filteredForms.length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
+                    filteredForms.length > 0
+                      ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                  }`}
+                  title="ลบแบบฟอร์มทั้งหมดตามตัวกรอง"
+                >
+                  <Trash2 size={15} />
+                  ลบทั้งหมด ({filteredForms.length})
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
+                <Lock size={14} />
+                <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-500/5 border border-amber-500/20 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-400">
+          <div className="flex items-center gap-2.5 font-bold">
+            <Lock size={16} className="text-amber-500 flex-shrink-0" />
+            <span>ฟังก์ชันเลือกและลบข้อมูลแบบกลุ่ม (Batch Delete) ถูกจำกัดเฉพาะเมื่อปลดล็อก Danger Zone เท่านั้น</span>
+          </div>
           <button
             type="button"
-            onClick={handleToggleSelectAll}
-            className="flex items-center gap-2.5 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#74045F] transition-all shadow-sm"
+            onClick={() => setIsUnlockModalOpen(true)}
+            className="px-3.5 py-1.5 bg-amber-500 text-white rounded-xl font-extrabold text-[11px] uppercase tracking-wider hover:bg-amber-600 transition-all shadow-sm flex items-center gap-1.5"
           >
-            <input 
-              type="checkbox"
-              checked={selectedFormIds.length > 0 && selectedFormIds.length === filteredForms.length}
-              onChange={() => {}}
-              className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-            />
-            <span>{selectedFormIds.length === filteredForms.length && filteredForms.length > 0 ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+            <Lock size={12} />
+            ปลดล็อก Danger Zone
           </button>
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            เลือกอยู่ <span className="text-[#74045F] dark:text-[#C7911B] font-black">{selectedFormIds.length}</span> จาก <span className="font-bold">{filteredForms.length}</span> แบบฟอร์ม
-          </span>
         </div>
-
-        <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleOpenBatchDeleteModal('SELECTED')}
-                disabled={selectedFormIds.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
-                  selectedFormIds.length > 0
-                    ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95 cursor-pointer'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                }`}
-                title="ลบเฉพาะแบบฟอร์มที่เลือก"
-              >
-                <Trash2 size={15} />
-                ลบเฉพาะที่เลือก ({selectedFormIds.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenBatchDeleteModal('ALL')}
-                disabled={filteredForms.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm ${
-                  filteredForms.length > 0
-                    ? 'bg-rose-700 text-white hover:bg-rose-800 shadow-rose-700/20 active:scale-95 cursor-pointer'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                }`}
-                title="ลบแบบฟอร์มทั้งหมดตามตัวกรอง"
-              >
-                <Trash2 size={15} />
-                ลบทั้งหมด ({filteredForms.length})
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-xs font-bold">
-              <Lock size={14} />
-              <span>สิทธิ์การลบเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</span>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Forms Content */}
       <div className="pb-24 space-y-6">
@@ -619,16 +636,18 @@ export const FormManagement: React.FC<{
               >
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox"
-                      checked={selectedFormIds.includes(form.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleToggleSelectOne(form.id);
-                      }}
-                      className="w-5 h-5 rounded-md border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
-                      title="เลือกรายการนี้"
-                    />
+                    {isDangerZoneUnlocked && (
+                      <input 
+                        type="checkbox"
+                        checked={selectedFormIds.includes(form.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelectOne(form.id);
+                        }}
+                        className="w-5 h-5 rounded-md border-2 border-slate-300 dark:border-slate-600 text-[#74045F] accent-[#74045F] cursor-pointer"
+                        title="เลือกรายการนี้"
+                      />
+                    )}
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 duration-500 ${form.status === 'ACTIVE' ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}>
                       <FileText size={24} />
                     </div>
@@ -703,14 +722,16 @@ export const FormManagement: React.FC<{
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-white/5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-white/5">
-                    <th className="px-4 py-5 text-center">
-                      <input 
-                        type="checkbox"
-                        checked={selectedFormIds.length > 0 && selectedFormIds.length === filteredForms.length}
-                        onChange={handleToggleSelectAll}
-                        className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                      />
-                    </th>
+                    {isDangerZoneUnlocked && (
+                      <th className="px-4 py-5 text-center">
+                        <input 
+                          type="checkbox"
+                          checked={selectedFormIds.length > 0 && selectedFormIds.length === filteredForms.length}
+                          onChange={handleToggleSelectAll}
+                          className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="px-6 py-5">ชื่อแบบฟอร์ม</th>
                     <th className="px-6 py-5">สถานะ</th>
                     <th className="px-6 py-5">เวอร์ชัน</th>
@@ -726,14 +747,16 @@ export const FormManagement: React.FC<{
                       layout
                       className={`hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group text-sm ${selectedFormIds.includes(form.id) ? 'bg-[#74045F]/5 dark:bg-white/5' : ''}`}
                     >
-                      <td className="px-4 py-5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          type="checkbox"
-                          checked={selectedFormIds.includes(form.id)}
-                          onChange={() => handleToggleSelectOne(form.id)}
-                          className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
-                        />
-                      </td>
+                      {isDangerZoneUnlocked && (
+                        <td className="px-4 py-5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox"
+                            checked={selectedFormIds.includes(form.id)}
+                            onChange={() => handleToggleSelectOne(form.id)}
+                            className="w-4 h-4 rounded text-[#74045F] accent-[#74045F] cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-4">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${form.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/10 text-slate-400'}`}>

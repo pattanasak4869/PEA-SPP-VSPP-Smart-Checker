@@ -156,11 +156,6 @@ const App: React.FC = () => {
       const q = query(collection(db, col));
       
       return onSnapshot(q, (snapshot) => {
-        if (key === 'app_users' && snapshot.empty) {
-          console.log("Firestore users collection is empty. Auto-seeding default database elements...");
-          seedSampleData().catch((err) => console.error("Auto seeding failed:", err));
-        }
-
         const firestoreData: any[] = [];
         snapshot.forEach((doc) => {
           const item = {
@@ -270,9 +265,14 @@ const App: React.FC = () => {
       const inspections = safeParseLocalStorage<any[]>('app_inspections', []);
       const pendingInspections = inspections.filter((i: any) => i.status === 'SUBMITTED').length;
 
-      setBadgeCounts({
-        complaint: pendingComplaints,
-        inspectionApproval: pendingInspections
+      setBadgeCounts(prev => {
+        if (prev.complaint === pendingComplaints && prev.inspectionApproval === pendingInspections) {
+          return prev;
+        }
+        return {
+          complaint: pendingComplaints,
+          inspectionApproval: pendingInspections
+        };
       });
     } catch (e) {
       console.error('Error calculating badges:', e);
@@ -282,21 +282,23 @@ const App: React.FC = () => {
   useEffect(() => {
     calculateBadges();
     
-    const handleStorageChange = (e: StorageEvent) => {
-      // Refresh badges on complaint update
-      if (e.key === 'app_complaints') {
+    let debounceTimer: any = null;
+    const handleStorageChange = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
         calculateBadges();
-      }
+      }, 500);
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Refresh badges periodically
-    const interval = setInterval(calculateBadges, 30000); // 30s
+    // Refresh badges periodically with a calm interval
+    const interval = setInterval(calculateBadges, 30000);
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
-  }, [calculateBadges, view]);
+  }, [calculateBadges]);
 
   const lastActivityRef = React.useRef<number>(Date.now());
   const notifiedMarksRef = React.useRef<Set<number>>(new Set());
@@ -744,7 +746,12 @@ const App: React.FC = () => {
 
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 max-w-[1440px] mx-auto pb-10">
             <div className="animate-fade-in">
-                {view === 'DASHBOARD' && <Dashboard />}
+                {view === 'DASHBOARD' && (
+                  <Dashboard 
+                    userProfile={userProfile} 
+                    onNavigate={(newView) => setView(newView)} 
+                  />
+                )}
                 {view === 'POWER_PLANT_MANAGEMENT' && userProfile?.role === 'ADMIN' && (
                   <PowerPlantManagement 
                     isDangerZoneUnlocked={isAdminSecurityUnlocked} 

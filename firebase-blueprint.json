@@ -78,6 +78,41 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "vendorId", "plantId", "status"]
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "description": "ผลการตรวจสอบโรงไฟฟ้าและอุปกรณ์",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string" },
+        "plantId": { "type": "string" },
+        "plantName": { "type": "string" },
+        "inspectorId": { "type": "string" },
+        "inspectorName": { "type": "string" },
+        "formId": { "type": "string" },
+        "status": { "type": "string", "enum": ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"] },
+        "photos": { "type": "array" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "plantId", "inspectorId", "status"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "เรื่องร้องเรียนและปัญหาคุณภาพไฟฟ้า",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "plantId": { "type": "string" },
+        "title": { "type": "string" },
+        "details": { "type": "string" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "status": { "type": "string", "enum": ["NEW", "INVESTIGATING", "RESOLVED", "CLOSED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "status"]
     }
   },
   "firestore": {
@@ -96,6 +131,14 @@
     "/inspectionRequests/{requestId}": {
       "schema": "InspectionRequest",
       "description": "Collection สำหรับคำร้องขอ"
+    },
+    "/inspections/{inspectionId}": {
+      "schema": "Inspection",
+      "description": "Collection สำหรับผลการตรวจสอบ"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Collection สำหรับข้อร้องเรียน"
     }
   }
 }

@@ -13,8 +13,8 @@ import { InspectionResult } from '../types';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { useNotifications } from '../contexts/NotificationContext';
 import { SignatureModal } from './SignatureModal';
-import { db } from '../src/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db, sanitizeFirestoreData } from '../src/lib/firebase';
+import { collection, query, onSnapshot, doc, setDoc, getDocs, where } from 'firebase/firestore';
 import { PaginationControls } from './PaginationControls';
 
 interface InspectionApprovalProps {
@@ -30,8 +30,16 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
   const refreshData = () => {
     console.log("Real-time stream is active. Data is automatically synchronized.");
   };
-  const [inspections, setInspections] = useState<InspectionResult[]>([]);
-  const [historyInspections, setHistoryInspections] = useState<InspectionResult[]>([]);
+  const [inspections, setInspections] = useState<InspectionResult[]>(() => {
+    const cached = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
+    return cached.filter(i => i.status === 'SUBMITTED');
+  });
+  const [historyInspections, setHistoryInspections] = useState<InspectionResult[]>(() => {
+    const cached = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
+    return cached.filter(i => i.status === 'APPROVED' || i.status === 'REJECTED');
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [forms, setForms] = useState<any[]>([]);
   const [selectedInspection, setSelectedInspection] = useState<InspectionResult | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -161,8 +169,18 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
         return false; 
       });
 
-      setInspections(pending);
-      setHistoryInspections(history);
+      setInspections(prev => {
+        if (prev.length === pending.length && prev.every((p, idx) => p.id === pending[idx]?.id && p.status === pending[idx]?.status && p.submittedAt === pending[idx]?.submittedAt && p.createdAt === pending[idx]?.createdAt)) {
+          return prev;
+        }
+        return pending;
+      });
+      setHistoryInspections(prev => {
+        if (prev.length === history.length && prev.every((p, idx) => p.id === history[idx]?.id && p.status === history[idx]?.status && p.submittedAt === history[idx]?.submittedAt && p.createdAt === history[idx]?.createdAt)) {
+          return prev;
+        }
+        return history;
+      });
     }, (error) => {
       console.error("Firestore Inspections Sync Error in Approval:", error);
     });
@@ -171,7 +189,7 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
       unsubForms();
       unsubInspections();
     };
-  }, [userProfile]);
+  }, [userProfile?.role, userProfile?.peaOffice, userProfile?.department]);
 
   const handlePrintReport = () => {
     if (!selectedInspection || !selectedPlant) return;
@@ -211,7 +229,7 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
     }, 1000);
   };
 
-  const handleApprove = (action: 'APPROVED' | 'REJECTED', signature?: string) => {
+  const handleApprove = async (action: 'APPROVED' | 'REJECTED', signature?: string) => {
     if (!selectedInspection) return;
 
     if (action === 'APPROVED' && !signature) {
@@ -232,44 +250,86 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
       approvedAt: new Date().toISOString()
     };
 
-    setTimeout(() => {
+    try {
+      // 1. Save inspection result to Firestore
+      const cleanDbPayload = sanitizeFirestoreData(updatedInspection);
+      await setDoc(doc(db, 'inspections', selectedInspection.id), cleanDbPayload, { merge: true });
+
+      // 2. Update associated request status if exists or matching plant
+      const targetReqId = selectedInspection.requestId || associatedRequest?.id;
+      if (targetReqId) {
+        const reqUpdatePayload: any = {
+          status: action === 'APPROVED' ? 'COMPLETED' : 'ACCEPTED',
+          completedAt: action === 'APPROVED' ? new Date().toISOString() : undefined,
+          updatedAt: new Date().toISOString()
+        };
+        const cleanReqPayload = sanitizeFirestoreData(reqUpdatePayload);
+        await setDoc(doc(db, 'inspectionRequests', targetReqId), cleanReqPayload, { merge: true });
+      }
+
+      // 3. Look for any active requests for the same plant that were awaiting approval / accepted and complete them
+      if (action === 'APPROVED' && selectedInspection.plantId) {
+        try {
+          const reqQuery = query(
+            collection(db, 'inspectionRequests'),
+            where('plantId', '==', selectedInspection.plantId)
+          );
+          const reqSnap = await getDocs(reqQuery);
+          reqSnap.forEach(async (d) => {
+            const reqData = d.data();
+            if (reqData.status === 'AWAITING_APPROVAL' || reqData.status === 'ACCEPTED' || d.id === targetReqId) {
+              await setDoc(doc(db, 'inspectionRequests', d.id), {
+                status: 'COMPLETED',
+                completedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+          });
+        } catch (subErr) {
+          console.warn("Could not batch update requests for plant:", subErr);
+        }
+      }
+
+      // 4. Update local storage for immediate optimistic rendering
       const allInspections = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
       const updatedAll = allInspections.map((ins: InspectionResult) => 
         ins.id === selectedInspection.id ? updatedInspection : ins
       );
       
-      // Sort and slice
       updatedAll.sort((a, b) => {
         const dateA = new Date(a.approvedAt || a.submittedAt || a.createdAt).getTime();
         const dateB = new Date(b.approvedAt || b.submittedAt || b.createdAt).getTime();
         return dateB - dateA;
       });
-
-      // Keep recent inspections
       safeSetLocalStorage('app_inspections', updatedAll.slice(0, 60));
-      
-      // Update associated request status if exists
-      if (selectedInspection.requestId) {
-        const allRequests = safeParseLocalStorage<any[]>('app_inspection_requests', []);
-        const updatedRequests = allRequests.map(r => 
-          r.id === selectedInspection.requestId 
-            ? { ...r, status: action === 'APPROVED' ? 'COMPLETED' : 'ACCEPTED' } 
-            : r
-        );
-        safeSetLocalStorage('app_inspection_requests', updatedRequests);
-      }
+
+      const allRequests = safeParseLocalStorage<any[]>('app_inspection_requests', []);
+      const updatedRequests = allRequests.map(r => {
+        if (targetReqId && r.id === targetReqId) {
+          return { ...r, status: action === 'APPROVED' ? 'COMPLETED' : 'ACCEPTED' };
+        }
+        if (action === 'APPROVED' && selectedInspection.plantId && r.plantId === selectedInspection.plantId && (r.status === 'AWAITING_APPROVAL' || r.status === 'ACCEPTED')) {
+          return { ...r, status: 'COMPLETED' };
+        }
+        return r;
+      });
+      safeSetLocalStorage('app_inspection_requests', updatedRequests);
+
+      addNotification('SUCCESS', 'ระบบอนุมัติผลตรวจ', action === 'APPROVED' ? 'อนุมัติผลการตรวจสอบและปรับสถานะเคสเป็นดำเนินการเสร็จแล้ว' : 'ส่งกลับให้ตรวจสอบใหม่เรียบร้อยแล้ว');
       
       setInspections(prev => prev.filter(ins => ins.id !== selectedInspection.id));
-      setIsSubmitting(false);
       setView('LIST');
       setSelectedInspection(null);
       setApprovalNote('');
-    }, 1500);
+    } catch (err) {
+      console.error("Failed to persist approval to Firestore:", err);
+      addNotification('ALERT', 'ระบบอนุมัติผลตรวจ', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const ListView = () => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+  const renderListView = () => {
     const displayList = activeTab === 'PENDING' ? inspections : historyInspections;
     const paginatedDisplayList = displayList.slice(
       (currentPage - 1) * itemsPerPage,
@@ -277,7 +337,7 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
     );
 
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[2rem] w-full max-w-md mx-auto mb-10 shadow-inner">
            <button 
               onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
@@ -356,10 +416,10 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
     );
   };
 
-  const DetailView = () => {
+  const renderDetailView = () => {
     if (!selectedInspection) return null;
     return (
-       <div className="space-y-8 animate-slide-in-right">
+       <div className="space-y-8">
           <button 
              onClick={() => setView('LIST')}
              className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
@@ -677,7 +737,27 @@ export const InspectionApproval: React.FC<InspectionApprovalProps> = ({ userProf
       </div>
 
       <AnimatePresence mode="wait">
-         {view === 'LIST' ? <ListView key="list" /> : <DetailView key="detail" />}
+        {view === 'LIST' ? (
+          <motion.div
+            key="list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {renderListView()}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="detail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {renderDetailView()}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

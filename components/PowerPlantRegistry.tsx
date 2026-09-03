@@ -12,7 +12,7 @@ import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorag
 import { motion, AnimatePresence } from 'motion/react';
 import { InspectionResult } from '../types';
 import { db } from '../src/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -46,8 +46,10 @@ const MapPicker: React.FC<{
       });
       mapInstance.current = map;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+      L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
       }).addTo(map);
 
       const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
@@ -307,6 +309,11 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
       createdAt: new Date().toISOString(),
     };
 
+    // Save directly to Firestore for durable persistence
+    setDoc(doc(db, 'powerPlants', plantData.id), plantData).catch((err) => {
+      console.warn("Error persisting power plant to Firestore:", err);
+    });
+
     const updatedPlants = [plantData, ...plants];
     setPlants(updatedPlants);
     safeSetLocalStorage('power_plants', updatedPlants);
@@ -438,30 +445,44 @@ export const PowerPlantRegistry: React.FC<{ userProfile?: any }> = ({ userProfil
     const userOffice = userProfile?.peaOffice || userProfile?.department;
     
     if (isVendor) {
-      // Vendors see plants that match their agency/unit (office) 
-      // OR plants they created directly
-      const userOffice = userProfile?.peaOffice || userProfile?.department;
-      
-      const matchesOffice = p.office && userOffice && p.office === userOffice;
-      const isOwner = p.vendorId === userProfile?.employeeId || p.vendorId === userProfile?.username;
-      
-      // If the plant belongs to an office, it must be the user's office
-      if (p.office && p.office !== userOffice) {
-        return false;
-      }
-      
-      // If the plant doesn't have an office but has a vendorId, check ownership
-      if (!p.office && p.vendorId && !isOwner) {
-        return false;
-      }
+      if (!userProfile) return false;
 
-      // If it belongs to the office or user owns it, it's visible. 
-      // Also allow legacy plants with no office/vendorId for demo purposes if needed, 
-      // but usually we want strict filtering. 
-      // Based on user request: "ให้แสดงข้อมูลโรงไฟฟ้าที่มีหน่วยงานตรงกับผู้ใช้งาน"
-      if (!matchesOffice && !isOwner) {
-          // Check if it's a legacy plant (no office and no vendorId)
-          if (p.office || p.vendorId) return false;
+      const empId = userProfile.employeeId?.toString().trim().toLowerCase();
+      const username = userProfile.username?.toString().trim().toLowerCase();
+      const email = userProfile.email?.toString().trim().toLowerCase();
+      const name = userProfile.name?.toString().trim().toLowerCase();
+      const office = (userProfile.peaOffice || userProfile.department)?.toString().trim().toLowerCase();
+      const phone = userProfile.phone?.toString().trim();
+
+      // 1. Direct creator / owner identifiers
+      const plantVendorId = (p as any).vendorId?.toString().trim().toLowerCase();
+      const plantCreatedBy = (p as any).createdBy?.toString().trim().toLowerCase();
+      const plantUserId = (p as any).userId?.toString().trim().toLowerCase();
+
+      if (plantVendorId && (plantVendorId === empId || plantVendorId === username || plantVendorId === email)) {
+        // match
+      } else if (plantCreatedBy && (plantCreatedBy === empId || plantCreatedBy === username || plantCreatedBy === email || (name && plantCreatedBy === name))) {
+        // match
+      } else if (plantUserId && (plantUserId === empId || plantUserId === username || plantUserId === email)) {
+        // match
+      } else if (Array.isArray(p.coordinators) && p.coordinators.some((c: any) => {
+        if (!c) return false;
+        const cEmail = c.email?.toString().trim().toLowerCase();
+        const cName = c.name?.toString().trim().toLowerCase();
+        const cPhone = c.phone?.toString().trim();
+        return (
+          (cEmail && (cEmail === email || cEmail === username)) ||
+          (cName && name && (cName === name || cName.includes(name) || name.includes(cName))) ||
+          (cPhone && phone && cPhone === phone)
+        );
+      })) {
+        // match
+      } else if ((p as any).contactPerson && name && ((p as any).contactPerson.toLowerCase().includes(name) || name.includes((p as any).contactPerson.toLowerCase()))) {
+        // match
+      } else if ((p as any).office && office && (p as any).office.toLowerCase() === office && (p as any).office.toLowerCase() !== 'system' && (p as any).office.toLowerCase() !== 'กฟภ.' && (p as any).office.toLowerCase() !== 'pea') {
+        // match
+      } else {
+        return false;
       }
     }
 

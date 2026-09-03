@@ -4,7 +4,7 @@ import {
   Zap, ClipboardList, Camera, Upload, Send, ArrowLeft, RefreshCw, 
   MapPin, CheckCircle2, AlertTriangle, Search, Filter, History, 
   LayoutList, FileCheck, FileText, ChevronRight, Inbox, Trash2, Edit3, Eye, X, Download,
-  Lock, Unlock, Wifi, Navigation
+  Lock, Unlock, Wifi, Navigation, Check, Play
 } from 'lucide-react';
 import { safeParseLocalStorage, safeSetLocalStorage } from '../utils/localStorageUtils';
 import { compressBase64Image } from '../utils/imageUtils';
@@ -13,8 +13,8 @@ import { InspectionRequest, InspectionResult } from '../types';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { SignatureModal } from './SignatureModal';
-import { db } from '../src/lib/firebase';
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { db, sanitizeFirestoreData } from '../src/lib/firebase';
+import { collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 interface EquipmentInspectionProps {
   userProfile: any;
@@ -208,15 +208,15 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
       });
 
       setInboxRequests(fbRequests.filter((r: any) => {
-        const isPending = r.status === 'PENDING';
+        const isActionable = r.status === 'PENDING' || r.status === 'ACCEPTED';
         
         if (userProfile?.role === 'INSPECTOR' && userResponsibleProvince) {
           const plant = allPlantsLocal.find((p: any) => p.id === r.plantId);
-          return isPending && (!plant || plant.province === userResponsibleProvince);
+          return isActionable && (!plant || !plant.province || plant.province === userResponsibleProvince);
         }
         
         const matchesOffice = !r.office || r.office === userOffice;
-        return isPending && matchesOffice;
+        return isActionable && matchesOffice;
       }));
     });
 
@@ -231,6 +231,36 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
       ));
     });
 
+    // Check if there is an inspection transfer request from CaseMapTracker
+    const pendingTransfer = safeParseLocalStorage<any>('pending_map_inspection_target', null);
+    if (pendingTransfer) {
+      sessionStorage.removeItem('pending_map_inspection_target');
+      localStorage.removeItem('pending_map_inspection_target');
+
+      // Attempt to auto-start or pre-select plant & form when data arrives
+      setTimeout(() => {
+        const targetPlantId = pendingTransfer.plantId;
+        const targetReqId = pendingTransfer.requestId;
+        
+        const foundPlant = allPlantsLocal.find(p => p.id === targetPlantId) || pendingTransfer.rawPlant;
+        const foundReq = pendingTransfer.rawRequest || (targetReqId ? { id: targetReqId, plantId: targetPlantId, plantName: foundPlant?.name } : null);
+        
+        if (foundPlant) {
+          const matched = getMatchedForms(foundPlant);
+          if (matched.length === 1) {
+            handleStartInspection(foundPlant, matched[0], foundReq);
+          } else if (matched.length > 1) {
+            setPendingSelection({ plant: foundPlant, request: foundReq });
+            setMatchingForms(matched);
+            setShowFormPicker(true);
+          } else {
+            setSelectedPlant(foundPlant);
+            setActiveRequest(foundReq);
+          }
+        }
+      }, 500);
+    }
+
     return () => {
       unsubPlants();
       unsubForms();
@@ -239,12 +269,67 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
     };
   }, [userProfile]);
 
+  const handleAcceptRequestFromInbox = async (req: InspectionRequest) => {
+    try {
+      const inspectorId = userProfile?.employeeId || userProfile?.username || 'INSP-001';
+      const inspectorName = userProfile?.name || 'ผู้ตรวจสอบ กฟภ.';
+      const nowIso = new Date().toISOString();
+
+      const updatePayload = {
+        status: 'ACCEPTED' as const,
+        inspectorId,
+        inspectorName,
+        assignedAt: nowIso
+      };
+
+      // 1. Update Firestore
+      const reqRef = doc(db, 'inspectionRequests', req.id);
+      await updateDoc(reqRef, updatePayload).catch(async () => {
+        await setDoc(reqRef, updatePayload, { merge: true });
+      });
+
+      // 2. Update local storage
+      const allReqs = safeParseLocalStorage<InspectionRequest[]>('app_inspection_requests', []);
+      const updated = allReqs.map(r => r.id === req.id ? { ...r, ...updatePayload } : r);
+      safeSetLocalStorage('app_inspection_requests', updated, true);
+
+      // 3. Update local state
+      setInboxRequests(prev => prev.map(r => r.id === req.id ? { ...r, ...updatePayload } : r));
+
+      addNotification('SUCCESS', 'รับงานตรวจสอบ', `รับงานตรวจสอบเคส ${req.plantName || req.id} สำเร็จแล้ว (สถานะ: กำลังดำเนินการ)`);
+    } catch (err) {
+      console.error("Accept request error:", err);
+      addNotification('ALERT', 'รับงานตรวจสอบ', 'เกิดข้อผิดพลาดในการบันทึกสถานะรับงาน');
+    }
+  };
+
   const handleStartInspection = (plant: any, form: any, request?: InspectionRequest, draft?: InspectionResult) => {
     setSelectedPlant(plant);
     setSelectedForm(form);
     setActiveRequest(request || null);
     setActiveDraftId(draft?.id || null);
     
+    // If starting from a pending request, auto-accept it so status transitions to ACCEPTED / IN_PROGRESS
+    if (request && request.status === 'PENDING') {
+      const inspectorId = userProfile?.employeeId || userProfile?.username || 'INSP-001';
+      const inspectorName = userProfile?.name || 'ผู้ตรวจสอบ กฟภ.';
+      const nowIso = new Date().toISOString();
+      const updatePayload = {
+        status: 'ACCEPTED' as const,
+        inspectorId,
+        inspectorName,
+        assignedAt: nowIso
+      };
+
+      const reqRef = doc(db, 'inspectionRequests', request.id);
+      updateDoc(reqRef, updatePayload).catch(async () => {
+        await setDoc(reqRef, updatePayload, { merge: true });
+      });
+
+      const allReqs = safeParseLocalStorage<InspectionRequest[]>('app_inspection_requests', []);
+      safeSetLocalStorage('app_inspection_requests', allReqs.map(r => r.id === request.id ? { ...r, ...updatePayload } : r), true);
+    }
+
     // รีเซ็ตสถานะ Geofencing พร้อมตรวจพิกัดใหม่หมดจด
     setIsBypassed(false);
     setGeofenceStatus('PENDING');
@@ -367,7 +452,7 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
     console.log('Submission started:', { isFinal, hasSignature: !!signature });
 
     const newId = activeDraftId || `INS-${Date.now()}`;
-    const userId = userProfile?.employeeId || userProfile?.username;
+    const userId = userProfile?.employeeId || userProfile?.username || 'INSP-001';
     const result: InspectionResult = {
       id: newId,
       requestId: activeRequest?.id || undefined,
@@ -375,27 +460,22 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
       department: userProfile?.department || undefined,
       region: selectedPlant?.region || selectedPlant?.province || userProfile?.region || undefined,
       inspectorId: userId,
-      inspectorName: userProfile?.name || '',
+      inspectorName: userProfile?.name || 'ผู้ตรวจสอบ กฟภ.',
       plantId: selectedPlant.id,
       plantName: selectedPlant.name,
       formId: selectedForm.id,
-      formData,
-      photos,
-      documents,
+      formData: formData || {},
+      photos: photos || [],
+      documents: documents || [],
       status: isFinal ? 'SUBMITTED' : 'DRAFT',
       inspectorSignature: signature || undefined,
       createdAt: new Date().toISOString(),
       submittedAt: isFinal ? new Date().toISOString() : undefined
     };
 
+    // 1. FIRST: Save locally (Optimistic & Offline Persistence)
+    // Ensures inspector's work is NEVER lost even if network or Firestore has issues
     try {
-      // 1. Save directly to Firestore 'inspections' - remove undefined fields for compatibility
-      const cleanDbPayload = Object.fromEntries(
-        Object.entries(result).filter(([_, v]) => v !== undefined)
-      );
-      await setDoc(doc(db, 'inspections', result.id), cleanDbPayload);
-
-      // 2. Save locally for fallback/instant rendering
       const savedResults = safeParseLocalStorage<InspectionResult[]>('app_inspections', []);
       const index = savedResults.findIndex(r => r.id === newId);
       
@@ -414,19 +494,34 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
 
       safeSetLocalStorage('app_inspections', updatedResults.slice(0, 60));
 
-      // 3. Update associated request status if applicable
       if (activeRequest && isFinal) {
         const updatedReq = { ...activeRequest, status: 'AWAITING_APPROVAL' as const };
-        await setDoc(doc(db, 'inspectionRequests', activeRequest.id), updatedReq, { merge: true });
-
         const allRequests = safeParseLocalStorage<InspectionRequest[]>('app_inspection_requests', []);
         const updatedRequests = allRequests.map((r: InspectionRequest) => 
           r.id === activeRequest.id ? updatedReq : r
         );
         safeSetLocalStorage('app_inspection_requests', updatedRequests);
       }
+    } catch (locErr) {
+      console.warn("Local storage save warning:", locErr);
+    }
 
-      addNotification('SUCCESS', 'ระบบตรวจสอบ', isFinal ? 'ส่งผลการตรวจสอบสำเร็จแล้ว' : 'บันทึกฉบับร่างเรียบร้อยแล้ว');
+    // 2. SECOND: Sync to Firestore with recursive sanitation and error detection
+    try {
+      const cleanDbPayload = sanitizeFirestoreData(result);
+      await setDoc(doc(db, 'inspections', result.id), cleanDbPayload);
+
+      // 3. Update associated request status in Firestore if applicable
+      if (activeRequest && isFinal) {
+        const updatedReq = sanitizeFirestoreData({ 
+          ...activeRequest, 
+          status: 'AWAITING_APPROVAL' as const,
+          updatedAt: new Date().toISOString()
+        });
+        await setDoc(doc(db, 'inspectionRequests', activeRequest.id), updatedReq, { merge: true });
+      }
+
+      addNotification('SUCCESS', 'ระบบตรวจสอบ', isFinal ? 'ส่งผลการตรวจสอบและเชื่อมต่อคลาวด์สำเร็จแล้ว' : 'บันทึกฉบับร่างเรียบร้อยแล้ว');
       
       if (isFinal) {
         // Cleanup and redirect if submitted
@@ -442,12 +537,36 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
         // Just update activeDraftId if saved as draft
         setActiveDraftId(newId);
       }
-    } catch (err) {
-      console.error("Firestore submit inspection error:", err);
-      addNotification('ALERT', 'ระบบตรวจสอบ', 'ไม่สามารถส่งหรือบันทึกข้อมูลสำเร็จในขณะนี้ ตรวจสอบสิทธิ์หรือรหัสเชื่อมต่อ');
+    } catch (err: any) {
+      console.error("Firestore submit inspection error details:", err);
+      
+      const errorCode = err?.code || '';
+      const errorMsg = err?.message || String(err);
+      
+      if (errorCode === 'permission-denied') {
+        addNotification('ALERT', 'ระบบตรวจสอบ', 'บันทึกลงในเครื่องเรียบร้อยแล้ว แต่ติดสิทธิ์เข้าถึงคลาวด์ (Permission Denied) กรุณาตรวจสอบสิทธิ์บัญชีผู้ใช้');
+      } else if (errorCode === 'unavailable' || errorMsg.includes('offline') || errorMsg.includes('client is offline')) {
+        addNotification('INFO', 'โหมดออฟไลน์', 'บันทึกข้อมูลในเครื่องเรียบร้อยแล้ว ระบบจะซิงค์ขึ้นระบบคลาวด์อัตโนมัติเมื่อสัญญาณออนไลน์');
+      } else if (errorMsg.includes('exceeds') || errorMsg.includes('1MB') || errorMsg.includes('maximum size')) {
+        addNotification('ALERT', 'ขนาดไฟล์เกินจำกัด', 'บันทึกในเครื่องแล้ว แต่ขนาดไฟล์หรือรูปภาพเกินขีดจำกัดคลาวด์ (1 MB) กรุณาลดจำนวนรูปภาพที่แนบ');
+      } else {
+        addNotification('ALERT', 'ระบบตรวจสอบ', `บันทึกลงในอุปกรณ์เรียบร้อยแล้ว (การซิงค์คลาวด์: ${errorCode || 'เชื่อมต่อขัดข้อง'})`);
+      }
+
+      if (isFinal) {
+        setStep('SELECTION');
+        setSelectedPlant(null);
+        setSelectedForm(null);
+        setActiveRequest(null);
+        setActiveDraftId(null);
+        setFormData({});
+        setPhotos([]);
+        setDocuments([]);
+      } else {
+        setActiveDraftId(newId);
+      }
     } finally {
       setIsSubmitting(false);
-      // Refresh local data
     }
   };
 
@@ -592,40 +711,72 @@ export const EquipmentInspection: React.FC<EquipmentInspectionProps> = ({ userPr
                         inboxRequests.map(req => (
                            <div 
                              key={req.id} 
-                             onClick={() => {
-                               const plant = plants.find(p => p.id === req.plantId);
-                               
-                               // Improved matching logic
-                               let form = forms.find(f => f.id === req.formId);
-                               
-                               if (!form && plant) {
-                                  const matches = getMatchedForms(plant);
-                                  
-                                  if (matches.length > 1) {
-                                     setMatchingForms(matches);
-                                     setPendingSelection({ plant, request: req });
-                                     setShowFormPicker(true);
-                                     return;
-                                  } else if (matches.length === 1) {
-                                     form = matches[0];
-                                  }
-                               }
-                               
-                               if (!form) form = forms[0];
-
-                               if (plant && form) handleStartInspection(plant, form, req);
-                               else addNotification('ALERT', 'ระบบตรวจสอบ', 'ไม่พบข้อมูลโรงไฟฟ้าหรือแบบฟอร์ม');
-                             }}
-                             className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-amber-500/50 cursor-pointer transition-all group"
+                             className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-amber-500/50 transition-all group"
                            >
                               <div className="flex justify-between items-start mb-2">
                                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{req.id}</span>
-                                 <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">{new Date(req.requestedDate).toLocaleDateString()}</span>
+                                 <div className="flex items-center gap-1.5">
+                                   <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                                     req.status === 'ACCEPTED' 
+                                       ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20' 
+                                       : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
+                                   }`}>
+                                     {req.status === 'ACCEPTED' ? 'กำลังดำเนินการ' : 'รอดำเนินการ'}
+                                   </span>
+                                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(req.requestedDate).toLocaleDateString()}</span>
+                                 </div>
                               </div>
-                              <h4 className="text-xs font-black text-slate-800 dark:text-white mb-2 italic group-hover:text-amber-500 transition-colors line-clamp-1">{req.plantName}</h4>
-                              <div className="flex items-center gap-2">
-                                 <ClipboardList size={12} className="text-slate-400" />
-                                 <span className="text-[10px] text-slate-500 font-bold italic line-clamp-1 truncate">{req.details}</span>
+                              <h4 className="text-xs font-black text-slate-800 dark:text-white mb-1.5 italic group-hover:text-amber-500 transition-colors line-clamp-1">{req.plantName}</h4>
+                              <div className="flex items-center gap-2 mb-3">
+                                 <ClipboardList size={12} className="text-slate-400 shrink-0" />
+                                 <span className="text-[10px] text-slate-500 font-bold italic line-clamp-1 truncate">{req.details || 'ไม่มีรายละเอียดเพิ่มเติม'}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50 dark:border-white/5">
+                                 {req.status === 'PENDING' && (
+                                   <button
+                                     type="button"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleAcceptRequestFromInbox(req);
+                                     }}
+                                     className="flex-1 py-1.5 px-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                                   >
+                                     <Check size={13} />
+                                     <span>รับเคสนี้ (Accept)</span>
+                                   </button>
+                                 )}
+                                 <button
+                                   type="button"
+                                   onClick={() => {
+                                     const plant = plants.find(p => p.id === req.plantId);
+                                     let form = forms.find(f => f.id === req.formId);
+                                     
+                                     if (!form && plant) {
+                                        const matches = getMatchedForms(plant);
+                                        if (matches.length > 1) {
+                                           setMatchingForms(matches);
+                                           setPendingSelection({ plant, request: req });
+                                           setShowFormPicker(true);
+                                           return;
+                                        } else if (matches.length === 1) {
+                                           form = matches[0];
+                                        }
+                                     }
+                                     
+                                     if (!form) form = forms[0];
+                                     if (plant && form) handleStartInspection(plant, form, req);
+                                     else addNotification('ALERT', 'ระบบตรวจสอบ', 'ไม่พบข้อมูลโรงไฟฟ้าหรือแบบฟอร์ม');
+                                   }}
+                                   className={`py-1.5 px-3 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                                     req.status === 'ACCEPTED'
+                                       ? 'flex-1 bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
+                                       : 'bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200'
+                                   }`}
+                                 >
+                                   <Play size={12} />
+                                   <span>เริ่มเข้าตรวจ</span>
+                                 </button>
                               </div>
                            </div>
                         ))

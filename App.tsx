@@ -589,18 +589,8 @@ const App: React.FC = () => {
       {/* Desktop Sidebar */}
       <aside className="hidden xl:flex flex-col w-72 h-full border-r border-gray-200 dark:border-white/5 bg-white dark:bg-[#030712] z-[100] transition-colors duration-300">
         <div className="p-8 flex items-center gap-4 mb-8">
-            <div className="relative group flex-shrink-0">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#74045F] to-[#4A023D] dark:from-[#C7911B] dark:to-[#8C620B] p-[2px] shadow-lg shadow-[#74045F]/25 dark:shadow-[#C7911B]/25 flex items-center justify-center">
-                    <img 
-                      src="/favicon.svg" 
-                      alt="PEA PQ Logo" 
-                      className="w-full h-full object-contain rounded-[14px]"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-[#030712] shadow-sm"></div>
+            <div className="bg-[#74045F] dark:bg-[#C7911B] p-2.5 rounded-lg shadow-lg shadow-[#74045F]/20 dark:shadow-[#C7911B]/20">
+                <Zap size={24} className="text-white" fill="currentColor" />
             </div>
             <div className="flex flex-col">
                 <h1 className="text-base font-black text-[#74045F] dark:text-[#C7911B] tracking-tight leading-none mb-1">{t('app.title')}</h1>
@@ -649,27 +639,14 @@ const App: React.FC = () => {
         {/* Mobile / Action Header */}
         <header className="shrink-0 border-b border-gray-200 dark:border-white/5 px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center z-[90] sticky top-0 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-2xl transition-colors duration-300">
           <div className="flex items-center gap-3 xl:hidden">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#74045F] to-[#4A023D] dark:from-[#C7911B] dark:to-[#8C620B] p-[2px] shadow-md shadow-[#74045F]/20 dark:shadow-[#C7911B]/20 flex items-center justify-center flex-shrink-0">
-                  <img 
-                    src="/favicon.svg" 
-                    alt="Logo" 
-                    className="w-full h-full object-contain rounded-[10px]"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
+              <div className="bg-[#74045F] dark:bg-[#C7911B] p-2 rounded-lg shadow-lg shadow-[#74045F]/20 dark:shadow-[#C7911B]/20">
+                  <Zap size={20} className="text-white" fill="currentColor" />
               </div>
-              <div className="flex flex-col">
-                  <h1 className="text-sm font-black tracking-tight leading-tight text-slate-900 dark:text-white">{t('app.title')}</h1>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">{t('app.division')}</span>
-              </div>
+              <h1 className="text-base font-bold tracking-tight">{t('app.title')}</h1>
           </div>
           
-          <div className="hidden xl:flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 p-1 flex items-center justify-center">
-                  <img src="/favicon.svg" alt="App Icon" className="w-full h-full object-contain" />
-              </div>
-              <h2 className="text-sm font-black uppercase tracking-[0.15em] text-[#74045F] dark:text-[#C7911B]">
+          <div className="hidden xl:block">
+              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#74045F] dark:text-[#C7911B]">
                 {view === 'DASHBOARD' ? t('nav.dashboard') : 
                  view === 'POWER_PLANT_MANAGEMENT' ? t('nav.admin_plants') :
                  view === 'USER_MANAGEMENT' ? t('nav.admin_users') : 
